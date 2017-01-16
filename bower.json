@@ -1,0 +1,30 @@
+{
+  "name": "KObservable",
+  "description": "Observable data model",
+  "version": "0.0.1",
+  "main": "index",
+  "authors": [
+    "Keleko34"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "Object",
+    "Array",
+    "Bindable Data",
+    "Observable",
+    "Data Binding",
+    "Data Change Events"
+  ],
+  "homepage": "https://github.com/keleko34/KObservable",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests",
+    ".gulp"
+  ],
+  "devDependencies": {
+    "requirejs": "~2.1.11"
+  }
+}
