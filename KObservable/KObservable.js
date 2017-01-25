@@ -6,22 +6,36 @@ define([],function(){
           "postset":[],
           "add":[],
           "postadd":[],
-
+          "delete":[],
+          "postdelete":[],
+          "splice":[],
+          "postsplice":[],
+          "push":[],
+          "postpush":[],
+          "pop":[],
+          "postpop":[],
+          "shift":[],
+          "postshift":[],
+          "unshift":[],
+          "postunshift":[],
+          "fill":[],
+          "postfill":[],
+          "reverse":[],
+          "postreverse":[],
+          "sort":[],
+          "postsort":[]
         };
 
     /* The Main constructor */
     function Mixed(name,parent,scope,data)
     {
-      var
-
-
       /* Object prototype extensions chained down to the function */
       if(!Object.prototype._toString)
       {
         Object.defineProperties(Object.prototype,{
           _toString:setDescriptor(Object.prototype.toString,false,true),
           typeof:setDescriptor(function(v){return ({}).toString.call(v).match(/\s([a-zA-Z]+)/)[1].toLowerCase();},false,true),
-          sizeof:setDescriptor(sizeof,false,true)
+          sizeof:setDescriptor(sizeof,false,true),
           isObject:setDescriptor(isObject,false,true),
           isArray:setDescriptor(isArray,false,true),
           isObservable:setDescriptor(isObservable,false,true),
@@ -42,7 +56,7 @@ define([],function(){
 
       if(!window.Proxy) return console.error("There is no support for proxy on this browser");
 
-      var prox = new Proxy(KObservable, {get:function(target,key){return target[key];},set:proxySet,deleteProperty:proxyDelete}),
+      var prox = new Proxy(KObservable, {set:proxySet,deleteProperty:proxyDelete}),
           keys = Object.keys(data);
 
       Object.defineProperties(KObservable,{
@@ -97,6 +111,22 @@ define([],function(){
         set:function(v){if(!!writable) func = v;},
         enumerable:false,
         configurable:!!redefinable
+      }
+    }
+
+    function setPointer(obj,prop,desc)
+    {
+      return {
+          get:function(){
+              return obj[prop];
+          },
+          set:function(v){
+
+            (this._stopChange ? obj.stopChange() : obj)[prop] = v;
+            this._stopChange = undefined;
+          },
+          enumerable:desc.enumerable,
+          configurable:desc.configurable
       }
     }
 
@@ -249,13 +279,13 @@ define([],function(){
         });
     }
 
-    function keys(v)
+    function keys(v,type)
     {
       if(this == Object.prototype && v === undefined) return console.error("No object was specified in Object.prototype.keys");
 
       return Object.keys((v !== undefined ? v : this))
       .filter(function(k){
-        return (isNaN(parseInt(k,10)));
+        return (!type) || ((type === 'object' || type === 'o') ? (isNaN(parseInt(k,10))) : (!isNaN(parseInt(k,10))));
       });
     }
 
@@ -276,6 +306,11 @@ define([],function(){
 
     /* ENDREGION Object extensions */
 
+    function add(prop,value)
+    {
+
+    }
+
     function addPrototype(prop,value)
     {
       if(this[prop] === undefined)
@@ -287,6 +322,12 @@ define([],function(){
         console.error('Your attempting to add your prototype with the prop: ',prop,' that already exists');
       }
       return this;
+    }
+
+    function addPointer(obj,prop,newProp) /* Handle listener sharing, possibly add property saying this is a pointer and the pointed object */
+    {
+      var desc = Object.getOwnPropertyDescriptor(obj,prop);
+      Object.defineProperty(this,(newProp || prop),setPointer(obj,prop,desc));
     }
 
     function merge(v)
@@ -305,11 +346,6 @@ define([],function(){
     }
 
     function fill()
-    {
-
-    }
-
-    function keys() //from array and object, needs combined
     {
 
     }
@@ -349,37 +385,99 @@ define([],function(){
 
     }
 
-    function toString()
-    {
-
-    }
-
     function unshift()
     {
 
     }
 
-    function length(v) //this will help with deleting and adding values to the array part
+    /* Event Listeners */
+
+    function addListener(type,listener)
     {
 
     }
 
-    function stringify()
+    function removeListener(type,listener)
     {
 
     }
 
-    function isObject()
+    function addActionListener(type,func)
     {
 
     }
 
-    function isArray()
+    function removeActionListener(type,func)
     {
 
     }
 
-    function isObservable()
+    function addDataListener(prop,func)
+    {
+
+    }
+
+    function removeDataListener(prop,func)
+    {
+
+    }
+
+    function addDataCreateListener(prop,func)
+    {
+
+    }
+
+    function removeDataCreateListener(prop,func)
+    {
+
+    }
+
+    function addDataDeleteListener(prop,func)
+    {
+
+    }
+
+    function removeDataDeleteListener(prop,func)
+    {
+
+    }
+
+    function addChildDataListener(prop,func)
+    {
+
+    }
+
+    function removeChildDataListener(prop,func)
+    {
+
+    }
+
+    function addChildDataCreateListener(prop,func)
+    {
+
+    }
+
+    function removeChildDataCreateListener(prop,func)
+    {
+
+    }
+
+    function addChildDataDeleteListener(prop,func)
+    {
+
+    }
+
+    function removeChildDataDeleteListener(prop,func)
+    {
+
+    }
+
+    function subscribe(prop,func)
+    {
+
+    }
+
+    function unsubscribe(prop,func)
     {
 
     }
