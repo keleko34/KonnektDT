@@ -24,7 +24,16 @@ define([],function(){
           "postreverse":[],
           "sort":[],
           "postsort":[]
-        };
+        },
+        _onaction = function(e)
+        {
+          for(var x=0,_curr=_actions[e.type],len=_curr.length;x!==len;x++)
+          {
+              _curr[x](e);
+              if(e._stopPropogration) break;
+          }
+          return e._preventDefault;
+        }
 
     /* The Main constructor */
     function Mixed(name,parent,scope,data)
@@ -114,6 +123,41 @@ define([],function(){
       }
     }
 
+    function setBindDescriptor(key,value)
+    {
+      var _value = value,
+          _oldValue = value,
+          _key = key,
+          _set = function(v,e)
+          {
+              _oldValue = _value;
+              _value = v;
+            if(!e.stopChange)
+            {
+              e.listener = '__kbupdatelisteners';
+              e.type = 'postset';
+              _onevent(e);
+            }
+          };
+      return {
+          get:function(){
+              return _value;
+          },
+          set:function(v)
+          {
+              var e = new eventObject(this,_key,'set',v,_value,arguments,'__kblisteners',this._stopChange);
+              if(_onevent(e) !== true)
+              {
+                 _set(v,e);
+                if(!this._stopChange) this.callSubscribers(_prop,_value,_oldValue);
+              }
+              this._stopChange = undefined;
+          },
+          configurable:false,
+          enumerable:true
+      }
+    }
+
     function setPointer(obj,prop,desc)
     {
       return {
@@ -148,15 +192,39 @@ define([],function(){
         {
           if(typeof value === 'object')
           {
-            value = Mixed(target.__kbname,(target.__kbscopeString+"."+key),target.__kbImmediateParent,value);
+            value = Mixed(target.__kbname,(target.__kbscopeString+"."+key),target,value);
+
+            var e = new eventObject(target,key,'add',value,undefined,[],'__kbcreatelisteners',target._stopChange);
+            if(_onevent(e) !== true)
+            {
+              Object.defineProperty(target,key,setBindDescriptor(key,value));
+              e.listener = '__kbpostcreatelisteners';
+              e.type = 'postadd'
+              _onevent(e);
+            }
           }
           else if(value instanceof Mixed)
           {
-            target.addPointer(key,value);
+            var e = new eventObject(target,key,'add',value,undefined,[],'__kbcreatelisteners',target._stopChange);
+            if(_onevent(e) !== true)
+            {
+              var desc = Object.getOwnPropertyDescriptor(value.__kbImmediateParent,key);
+              Object.defineProperty(target,key,setPointer(value.__kbImmediateParent,key,desc));
+              e.listener = '__kbpostcreatelisteners';
+              e.type = 'postadd';
+              _onevent(e);
+            }
           }
           else
           {
-            target.addBindable(key,value);
+            var e = new eventObject(target,key,'add',value,undefined,[],'__kbcreatelisteners',target._stopChange);
+            if(_onevent(e) !== true)
+            {
+              Object.defineProperty(target,key,setBindDescriptor(key,value));
+              e.listener = '__kbpostcreatelisteners';
+              e.type = 'postadd';
+              _onevent(e);
+            }
           }
         }
       }
@@ -240,14 +308,14 @@ define([],function(){
     {
       if(this == Object.prototype && v === undefined) return console.error("No value specified in Object.prototype.isObject to check");
 
-      return (Object.prototype.typeof((v !== undefined ? v : this)) === 'object');
+      return (Object.prototype.typeof((v !== undefined ? (typeof v === 'object' ? v : this[v]) : this)) === 'object');
     }
 
     function isArray(v)
     {
       if(this == Object.prototype && v === undefined) return console.error("No value specified in Object.prototype.isArray to check");
 
-      return (Object.prototype.typeof((v !== undefined ? v : this)) === 'array');
+      return (Object.prototype.typeof((v !== undefined ? (typeof v === 'object' ? v : this[v]) : this)) === 'array');
     }
 
     function isObservable(obj,prop)
@@ -283,7 +351,7 @@ define([],function(){
     {
       if(this == Object.prototype && v === undefined) return console.error("No object was specified in Object.prototype.keys");
 
-      return Object.keys((v !== undefined ? v : this))
+      return Object.keys((v !== undefined ? (typeof v === 'object' ? v : this[v]) : this))
       .filter(function(k){
         return (!type) || ((type === 'object' || type === 'o') ? (isNaN(parseInt(k,10))) : (!isNaN(parseInt(k,10))));
       });
@@ -306,9 +374,16 @@ define([],function(){
 
     /* ENDREGION Object extensions */
 
-    function add(prop,value)
+    function add(key,value)
     {
+      if(this[key] === 'undefined') this[key] = value;
+      return this;
+    }
 
+    function set(key,value)
+    {
+      this[key] = value;
+      return this;
     }
 
     function addPrototype(prop,value)
@@ -324,10 +399,11 @@ define([],function(){
       return this;
     }
 
-    function addPointer(obj,prop,newProp) /* Handle listener sharing, possibly add property saying this is a pointer and the pointed object */
+    /* Handle listener sharing, possibly add property saying this is a pointer and the pointed object */
+    function addPointer(obj,prop,newProp)
     {
-      var desc = Object.getOwnPropertyDescriptor(obj,prop);
-      Object.defineProperty(this,(newProp || prop),setPointer(obj,prop,desc));
+      if(!(obj instanceof Mixed)) obj = Mixed(obj.__kbname,(''),obj,obj);
+      this[(newProp || prop)] = obj;
     }
 
     function merge(v)
