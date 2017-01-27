@@ -1,11 +1,11 @@
 define([],function(){
   function CreateKObservable()
   {
-    var events = {
+    var _events = {
           "set":[],
           "postset":[],
-          "add":[],
-          "postadd":[],
+          "create":[],
+          "postcreate":[],
           "delete":[],
           "postdelete":[],
           "splice":[],
@@ -25,9 +25,9 @@ define([],function(){
           "sort":[],
           "postsort":[]
         },
-        _onaction = function(e)
+        _onevent = function(e)
         {
-          for(var x=0,_curr=_actions[e.type],len=_curr.length;x!==len;x++)
+          for(var x=0,_curr=_events[e.type],len=_curr.length;x!==len;x++)
           {
               _curr[x](e);
               if(e._stopPropogration) break;
@@ -72,7 +72,12 @@ define([],function(){
         __kbname:setDescriptor((typeof name === 'string' ? name : "default"),true,true),
         __kbref:setDescriptor((parent ? (parent.__kbref || parent) : prox),true,true),
         __kbscopeString:setDescriptor((scope || ""),true,true),
-        __kbImmediateParent:setDescriptor((parent || null),true,true)
+        __kbImmediateParent:setDescriptor((parent || null),true,true),
+        __kblisteners:setDescriptor([]),
+        __kbupdatelisteners:setDescriptor([]),
+        __kbcreatelisteners:setDescriptor([]),
+        __kbdeletelisteners:setDescriptor([]),
+        __kbpointers:setDescriptor({})
       });
 
       for(var x=0,len=keys.length;x<len;x++)
@@ -83,6 +88,7 @@ define([],function(){
       return prox;
     }
 
+    /* Helper methods and the main proxy Methods */
     function eventObject(obj,key,value,oldValue,action,listener,args,stopChange)
     {
       this.stopPropogation = function(){this._stopPropogration = true;}
@@ -194,35 +200,35 @@ define([],function(){
           {
             value = Mixed(target.__kbname,(target.__kbscopeString+"."+key),target,value);
 
-            var e = new eventObject(target,key,'add',value,undefined,[],'__kbcreatelisteners',target._stopChange);
+            var e = new eventObject(target,key,'create',value,undefined,[],'__kbcreatelisteners',target._stopChange);
             if(_onevent(e) !== true)
             {
               Object.defineProperty(target,key,setBindDescriptor(key,value));
-              e.listener = '__kbpostcreatelisteners';
-              e.type = 'postadd'
+              e.listener = '__kbupdatelisteners';
+              e.type = 'postcreate'
               _onevent(e);
             }
           }
           else if(value instanceof Mixed)
           {
-            var e = new eventObject(target,key,'add',value,undefined,[],'__kbcreatelisteners',target._stopChange);
+            var e = new eventObject(target,key,'create',value,undefined,[],'__kbcreatelisteners',target._stopChange);
             if(_onevent(e) !== true)
             {
               var desc = Object.getOwnPropertyDescriptor(value.__kbImmediateParent,key);
               Object.defineProperty(target,key,setPointer(value.__kbImmediateParent,key,desc));
-              e.listener = '__kbpostcreatelisteners';
-              e.type = 'postadd';
+              e.listener = '__kbupdatelisteners';
+              e.type = 'postcreate';
               _onevent(e);
             }
           }
           else
           {
-            var e = new eventObject(target,key,'add',value,undefined,[],'__kbcreatelisteners',target._stopChange);
+            var e = new eventObject(target,key,'create',value,undefined,[],'__kbcreatelisteners',target._stopChange);
             if(_onevent(e) !== true)
             {
               Object.defineProperty(target,key,setBindDescriptor(key,value));
-              e.listener = '__kbpostcreatelisteners';
-              e.type = 'postadd';
+              e.listener = '__kbupdatelisteners';
+              e.type = 'postcreate';
               _onevent(e);
             }
           }
@@ -251,8 +257,18 @@ define([],function(){
     function proxyDelete(target,key)
     {
       /* change size */
-
-      return true;
+      var e = new eventObject(target,key,'delete',value,undefined,[],'__kbdeletelisteners',target._stopChange);
+      if(_onevent(e) !== true)
+      {
+        if(typeof target[key] === 'object')
+        {
+          target[key] = null;
+        }
+        delete target[key];
+        e.listener = '__kbupdatelisteners';
+        e.type = 'postdelete'
+        _onevent(e);
+      }
     }
 
     /* REGION Object extensions */
@@ -349,9 +365,11 @@ define([],function(){
 
     function keys(v,type)
     {
+      type = (typeof v === 'string' && type === undefined ? v : type);
+
       if(this == Object.prototype && v === undefined) return console.error("No object was specified in Object.prototype.keys");
 
-      return Object.keys((v !== undefined ? (typeof v === 'object' ? v : this[v]) : this))
+      return Object.keys((v !== undefined && typeof v !== 'string' ? (typeof v === 'object' ? v : this[v]) : this))
       .filter(function(k){
         return (!type) || ((type === 'object' || type === 'o') ? (isNaN(parseInt(k,10))) : (!isNaN(parseInt(k,10))));
       });
@@ -376,7 +394,10 @@ define([],function(){
 
     function add(key,value)
     {
-      if(this[key] === 'undefined') this[key] = value;
+      if(this[key] === 'undefined')
+      {
+        this[key] = value;
+      }
       return this;
     }
 
@@ -386,29 +407,83 @@ define([],function(){
       return this;
     }
 
-    function addPrototype(prop,value)
+    function addPrototype(key,value)
     {
-      if(this[prop] === undefined)
+      if(this[key] === undefined)
       {
-        Object.defineProperty(this.__proto__,prop,setDescriptor(value,true,true));
+        Object.defineProperty(this.__proto__,key,setDescriptor(value,true,true));
       }
       else
       {
-        console.error('Your attempting to add your prototype with the prop: ',prop,' that already exists');
+        console.error('Your attempting to add your prototype with the prop %O that already exists on %O',prop,this);
       }
       return this;
     }
 
-    /* Handle listener sharing, possibly add property saying this is a pointer and the pointed object */
-    function addPointer(obj,prop,newProp)
+    /* Handle listener sharing (done in addlistener Methods) */
+    function addPointer(passobj,prop,newProp)
     {
-      if(!(obj instanceof Mixed)) obj = Mixed(obj.__kbname,(''),obj,obj);
-      this[(newProp || prop)] = obj;
+      if(!(passobj instanceof Mixed)) passobj = Mixed(passobj.__kbname,(''),passobj,passobj);
+
+      this[(newProp || prop)] = passobj;
+
+      this.__kbpointers[(newProp || prop)] = passobj;
+
     }
 
-    function merge(v)
+    function del(key)
     {
+      if(this[key] !== undefined)
+      {
+        delete this[key];
+      }
+      return this;
+    }
 
+    function move(obj,prop)
+    {
+      this[prop] = obj[prop];
+
+      if(obj instanceof Mixed)
+      {
+        delete obj[prop];
+      }
+      else
+      {
+        obj[prop] = null;
+        delete obj[prop];
+      }
+      return this;
+    }
+
+    function copy(obj,prop)
+    {
+      this[prop] = obj[prop];
+      return this;
+    }
+
+    function merge(obj)
+    {
+      var cache = [];
+      function recMerge(from,to)
+      {
+        var keys = (from instanceof Mixed ? from.keys('o') : Object.keys(from)),
+            _curr;
+        for(var x=0,len=keys.length;x<len;x++)
+        {
+          _curr = from[keys[x]];
+          if(typeof _curr === 'object' && cache.indexOf(_curr) === -1 && to[keys[x]] !== 'undefined')
+          {
+            recMerge(_curr,to);
+          }
+          else
+          {
+            to[keys[x]] = _curr;
+          }
+        }
+      }
+      recMerge(obj,this);
+      return this;
     }
 
     function entries() //from array but should also be for object
@@ -428,12 +503,23 @@ define([],function(){
 
     function pop()
     {
+      var e = new eventObject(this,(this.length-1),'pop',this[(this.length-1)],undefined,arguments,'');
+      if(_onevent(e) !== true)
+      {
 
+      }
     }
 
-    function push()
+    function push(v)
     {
-
+      var e = new eventObject(this,(this.length),'push',v,undefined,arguments,'');
+      if(_onevent(e) !== true)
+      {
+        this[this.length] = v;
+        e.type = 'postpush';
+        _onevent(e);
+      }
+      return this.length;
     }
 
     function reverse()
@@ -451,9 +537,49 @@ define([],function(){
 
     }
 
-    function splice()
+    function splice(index,remove,insert)
     {
+      var e = new eventObject(this,index,'splice',undefined,undefined,arguments,'');
+      if(_onevent(e) !== true)
+      {
+        var _ret = [],
+            _inserts = Array.prototype.slice.call(arguments,2),
+            _insertLen = (_inserts.length-2),
+            _index = 0;
 
+        if(remove !== 0 && this[((index-1)+remove)] !== undefined)
+        {
+          for(var x=0,len=remove;x<len;x++)
+          {
+            _ret.push(this[index+x]);
+            for(var i=(index+x),lenI=(this.length-1);i<lenI;i++)
+            {
+                this[i] = this[(i+1)];
+            }
+            delete this[(this.length-1)];
+          }
+        }
+        if(_insertLen !== 0)
+        {
+          for(var x=0,len=_insertLen;x<len;x++)
+          {
+              _index = (index+(Math.min(1,x)));
+              for(var i=this.length,lenI=_index;i>lenI;i--)
+              {
+                this[i] = this[(i-1)];
+              }
+              this[_index] = _inserts[x];
+          }
+        }
+        e.type = 'postsplice';
+        e.listener = '';
+        _onevent(e);
+        return _ret;
+      }
+      else
+      {
+        return [];
+      }
     }
 
     function toLocaleString()
@@ -574,6 +700,8 @@ define([],function(){
     Mixed.prototype.slice = Array.prototype.slice;
     Mixed.prototype.some = Array.prototype.some;
     Mixed.prototype.length = 0;
+
+    Mixed.
 
     return Mixed();
   }

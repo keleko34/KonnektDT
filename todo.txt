@@ -1,0 +1,3 @@
+- do events
+- finish array methods
+
