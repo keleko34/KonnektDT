@@ -1,5 +1,5 @@
 define([],function(){
-  function CreateKObservable()
+  function CreateKObservable(data,name,parent,scope)
   {
     var _events = {
           "set":[],
@@ -25,6 +25,8 @@ define([],function(){
           "sort":[],
           "postsort":[]
         },
+
+        /* fix for events, local and global, child events and * events, copy KB lib */
         _onevent = function(e)
         {
           for(var x=0,_curr=_events[e.type],len=_curr.length;x!==len;x++)
@@ -36,8 +38,9 @@ define([],function(){
         }
 
     /* The Main constructor */
-    function Mixed(name,parent,scope,data)
+    function Mixed(data,name,parent,scope)
     {
+      data = (data === undefined ? {} : data);
       /* Object prototype extensions chained down to the function */
       if(!Object.prototype._toString)
       {
@@ -47,9 +50,11 @@ define([],function(){
           sizeof:setDescriptor(sizeof,false,true),
           isObject:setDescriptor(isObject,false,true),
           isArray:setDescriptor(isArray,false,true),
+          isMixed:setDescriptor(isMixed,false,true),
           isObservable:setDescriptor(isObservable,false,true),
           stringify:setDescriptor(stringify,false,true),
-          keys:setDescriptor(keys,false,true),
+          getKeys:setDescriptor(getKeys,false,true),
+          getIndexes:setDescriptor(getIndexes,false,true),
           keyCount:setCustomDescriptor(keyCount,false,true),
           indexCount:setCustomDescriptor(indexCount,false,true),
           count:setCustomDescriptor(count,false,true)
@@ -61,7 +66,7 @@ define([],function(){
         }
       }
       var KObservable = {};
-      KObservable.__proto__ = MixedObject.prototype;
+      KObservable.__proto__ = Mixed.prototype;
 
       if(!window.Proxy) return console.error("There is no support for proxy on this browser");
 
@@ -77,26 +82,28 @@ define([],function(){
         __kbupdatelisteners:setDescriptor([]),
         __kbcreatelisteners:setDescriptor([]),
         __kbdeletelisteners:setDescriptor([]),
-        __kbpointers:setDescriptor({})
+        __kbpointers:setDescriptor({}),
+        length:setDescriptor(0,true)
       });
 
       for(var x=0,len=keys.length;x<len;x++)
       {
-        prox[keys[x]] = data[keys];
+        prox[keys[x]] = data[keys[x]];
       }
 
       return prox;
     }
 
     /* Helper methods and the main proxy Methods */
-    function eventObject(obj,key,value,oldValue,action,listener,args,stopChange)
+    function eventObject(obj,key,type,value,oldValue,args,listener,stopChange)
     {
       this.stopPropogation = function(){this._stopPropogration = true;}
       this.preventDefault = function(){this._preventDefault = true;}
       this.local = obj;
       this.key = key;
       this.arguments = args;
-      this.event = action;
+      this.event = type;
+      this.type = type;
       this.listener = listener;
       this.name = obj.__kbname;
       this.root = obj.__kbref;
@@ -121,7 +128,7 @@ define([],function(){
     {
       return {
         get:function(){
-          return func();
+          return func.call(this);
         },
         set:function(v){if(!!writable) func = v;},
         enumerable:false,
@@ -155,11 +162,11 @@ define([],function(){
               if(_onevent(e) !== true)
               {
                  _set(v,e);
-                if(!this._stopChange) this.callSubscribers(_prop,_value,_oldValue);
+                if(!this._stopChange) this.callSubscribers(_key,_value,_oldValue);
               }
               this._stopChange = undefined;
           },
-          configurable:false,
+          configurable:true,
           enumerable:true
       }
     }
@@ -180,39 +187,44 @@ define([],function(){
       }
     }
 
+
+    /* create check if value is just undefined but descriptor is set */
     function proxySet(target,key,value)
     {
-      if(typeof target[key] === 'undefined')
+      if(!isObservable.call(target,key))
       {
-        var isIndex = !isNaN(parseInt(key,10));
-        if(target._stopChange)
-        {
-          target[key] = value;
-        }
-        else if(isIndex)
+        if(!isNaN(parseInt(key,10)))
         {
           key = parseInt(key,10);
           if(target.length <= key) target.length = (key+1);
+        }
+        if(target._stopChange)
+        {
+          target[key] = value;
+          return true;
         }
         else
         {
           if(typeof value === 'object')
           {
-            value = Mixed(target.__kbname,(target.__kbscopeString+"."+key),target,value);
+            value = Mixed(value,target.__kbname,(target.__kbscopeString+(target.__kbscopeString.length !== 0 ? "." : "")+key),target);
 
-            var e = new eventObject(target,key,'create',value,undefined,[],'__kbcreatelisteners',target._stopChange);
-            if(_onevent(e) !== true)
+            var e = new eventObject(target,key,'create',value,undefined,[],'__kbcreatelisteners',target._stopChange),
+                onEvent = _onevent(e);
+            if(onEvent !== true)
             {
               Object.defineProperty(target,key,setBindDescriptor(key,value));
               e.listener = '__kbupdatelisteners';
               e.type = 'postcreate'
               _onevent(e);
             }
+            return (onEvent !== true);
           }
           else if(value instanceof Mixed)
           {
-            var e = new eventObject(target,key,'create',value,undefined,[],'__kbcreatelisteners',target._stopChange);
-            if(_onevent(e) !== true)
+            var e = new eventObject(target,key,'create',value,undefined,[],'__kbcreatelisteners',target._stopChange),
+                onEvent = _onevent(e);
+            if(onEvent !== true)
             {
               var desc = Object.getOwnPropertyDescriptor(value.__kbImmediateParent,key);
               Object.defineProperty(target,key,setPointer(value.__kbImmediateParent,key,desc));
@@ -220,17 +232,20 @@ define([],function(){
               e.type = 'postcreate';
               _onevent(e);
             }
+            return (onEvent !== true);
           }
           else
           {
-            var e = new eventObject(target,key,'create',value,undefined,[],'__kbcreatelisteners',target._stopChange);
-            if(_onevent(e) !== true)
+            var e = new eventObject(target,key,'create',value,undefined,[],'__kbcreatelisteners',target._stopChange),
+                onEvent = _onevent(e);
+            if(onEvent !== true)
             {
               Object.defineProperty(target,key,setBindDescriptor(key,value));
               e.listener = '__kbupdatelisteners';
               e.type = 'postcreate';
               _onevent(e);
             }
+            return (onEvent !== true);
           }
         }
       }
@@ -251,14 +266,20 @@ define([],function(){
             target.length = value;
           }
         }
+        else
+        {
+          target[key] = value;
+        }
+        return true;
       }
     }
 
     function proxyDelete(target,key)
     {
       /* change size */
-      var e = new eventObject(target,key,'delete',value,undefined,[],'__kbdeletelisteners',target._stopChange);
-      if(_onevent(e) !== true)
+      var e = new eventObject(target,key,'delete',value,undefined,[],'__kbdeletelisteners',target._stopChange),
+          onEvent = _onevent(e);
+      if(onEvent !== true)
       {
         if(typeof target[key] === 'object')
         {
@@ -269,6 +290,7 @@ define([],function(){
         e.type = 'postdelete'
         _onevent(e);
       }
+      return (onEvent !== true);
     }
 
     /* REGION Object extensions */
@@ -334,15 +356,22 @@ define([],function(){
       return (Object.prototype.typeof((v !== undefined ? (typeof v === 'object' ? v : this[v]) : this)) === 'array');
     }
 
+    function isMixed(v)
+    {
+      if(this == Object.prototype && v === undefined) return console.error("No value specified in Object.prototype.isMixed to check");
+
+      return (Object.prototype.typeof((v !== undefined ? (typeof v === 'object' ? v : this[v]) : this)) === 'mixed');
+    }
+
     function isObservable(obj,prop)
     {
       if(this == Object.prototype && obj === undefined && prop === undefined) return console.error("No object and property specified in Object.prototype.isObservable to check");
 
-      if(obj === undefined)
-      {
-        console.error("No property specified in isObservable to check");
-      }
-      return (Object.getOwnPropertyDescriptor((obj !== undefined && typeof obj !== 'string' ? obj : this),(prop !== undefined ? prop : obj)).value === undefined);
+      if(obj === undefined) return console.error("No property specified in isObservable to check");
+
+      var desc = Object.getOwnPropertyDescriptor((obj !== undefined && typeof obj !== 'string' ? obj : this),(prop !== undefined ? prop : obj));
+
+      return (desc ? (desc.value === undefined) : false);
     }
 
     function stringify(v)
@@ -363,21 +392,33 @@ define([],function(){
         });
     }
 
-    function keys(v,type)
+    function getKeys(v,type)
     {
       type = (typeof v === 'string' && type === undefined ? v : type);
 
-      if(this == Object.prototype && v === undefined) return console.error("No object was specified in Object.prototype.keys");
+      if(this == Object.prototype && v === undefined) return console.error("No object was specified in Object.prototype.getkeys");
 
       return Object.keys((v !== undefined && typeof v !== 'string' ? (typeof v === 'object' ? v : this[v]) : this))
       .filter(function(k){
-        return (!type) || ((type === 'object' || type === 'o') ? (isNaN(parseInt(k,10))) : (!isNaN(parseInt(k,10))));
+        return ((!type) || ((type === 'object' || type === 'o')) ? (isNaN(parseInt(k,10))) : (!isNaN(parseInt(k,10))));
+      });
+    }
+
+    function getIndexes(v)
+    {
+      if(this == Object.prototype && v === undefined) return console.error("No object was specified in Object.prototype.getIndexes");
+
+      var _arr = (v !== undefined ? (typeof v === 'object' ? v : this[v]) : this);
+      return _arr.slice()
+      .map(function(v,i){return (i)})
+      .filter(function(v){
+        return (_arr[v] !== undefined)
       });
     }
 
     function keyCount()
     {
-      return this.keys(this).length
+      return this.getKeys('o').length
     }
 
     function indexCount(v)
@@ -391,6 +432,8 @@ define([],function(){
     }
 
     /* ENDREGION Object extensions */
+
+    /* REGION Object methods */
 
     function add(key,value)
     {
@@ -486,6 +529,10 @@ define([],function(){
       return this;
     }
 
+    /* ENDREGION Object methods */
+
+    /* REGION Array methods */
+
     function entries() //from array but should also be for object
     {
 
@@ -496,9 +543,22 @@ define([],function(){
 
     }
 
-    function fill()
+    function fill(value,start,end)
     {
+      start = (start !== undefined ? Math.max(0,start) : 0);
+      end = ((end !== undefined && end <= this.length) ? Math.min(this.length,Math.max(0,end)) : this.length);
 
+      var e = new eventObject(this,_start,'fill',this[_start],undefined,arguments,'');
+      if(_onevent(e) !== true)
+      {
+        for(var x=a.key;x<end;x++)
+        {
+            this[x] = value;
+        }
+        e.type = 'postfill';
+        _onevent(e);
+      }
+      return this;
     }
 
     function pop()
@@ -506,8 +566,13 @@ define([],function(){
       var e = new eventObject(this,(this.length-1),'pop',this[(this.length-1)],undefined,arguments,'');
       if(_onevent(e) !== true)
       {
-
+        var _ret = this[(this.length-1)];
+        this.length = (this.length-1);
+        e.type = 'postpop'
+        _onevent(e);
+        return _ret;
       }
+      return null;
     }
 
     function push(v)
@@ -524,17 +589,52 @@ define([],function(){
 
     function reverse()
     {
-
+      var e = new eventObject(this,undefined,'reverse',undefined,undefined,arguments,'');
+      if(_onevent(e) !== true)
+      {
+        var _rev = this.slice().reverse();
+        for(var x=0,len=this.length;x<len;x++)
+        {
+            this[x] = _rev[x];
+        }
+        e.type = 'postreverse';
+        _onevent(e);
+      }
+      return this;
     }
 
     function shift()
     {
-
+      var e = new eventObject(this,0,'shift',this[0],undefined,arguments,'');
+      if(_onevent(e) !== true)
+      {
+        var _ret = this[a.key];
+        for(var x=a.key,len=(this.length-1);x<len;x++)
+        {
+            this[x] = this[(x+1)];
+        }
+        this.length = (this.length-1);
+        e.type = 'postshift';
+        _onevent(e);
+      }
+      return null;
     }
 
     function sort()
     {
-
+      var e = new eventObject(this,undefined,'sort',undefined,undefined,arguments,'');
+      if(_onevent(e) !== true)
+      {
+        var _sort = this.slice();
+        _sort = _sort.sort.apply(_sort,arguments);
+        for(var x=0,len=this.length;x<len;x++)
+        {
+            this[x] = _sort[x];
+        }
+        e.type = 'postsort';
+        _onevent(e);
+      }
+      return this;
     }
 
     function splice(index,remove,insert)
@@ -589,10 +689,36 @@ define([],function(){
 
     function unshift()
     {
-
+      var e = new eventObject(this,0,'unshift',this[0],undefined,arguments,'');
+      if(_onevent(e) !== true)
+      {
+        var args = Array.prototype.slice.call(arguments);
+        for(var x=((this.length-1)+args.length),len=args.length;x !== -1;x--)
+        {
+          if(x < len)
+          {
+              this[x] = args[x];
+          }
+          else
+          {
+            this[x] = this[(x-args.length)];
+          }
+        }
+        e.type = 'postunshift';
+        _onevent(e);
+      }
+      return this.length;
     }
 
-    /* Event Listeners */
+    /* ENDREGION Array methods */
+
+    /* REGION Event Listeners */
+
+    function stopChange()
+    {
+      this._stopChange = true;
+      return this;
+    }
 
     function addListener(type,listener)
     {
@@ -684,26 +810,61 @@ define([],function(){
 
     }
 
-    Mixed.prototype.concat = Array.prototype.concat;
-    Mixed.prototype.every = Array.prototype.every;
-    Mixed.prototype.filter = Array.prototype.filter;
-    Mixed.prototype.find = Array.prototype.find;
-    Mixed.prototype.findIndex = Array.prototype.findIndex;
-    Mixed.prototype.forEach = Array.prototype.forEach;
-    Mixed.prototype.includes = Array.prototype.includes;
-    Mixed.prototype.indexOf = Array.prototype.indexOf;
-    Mixed.prototype.join = Array.prototype.join;
-    Mixed.prototype.lastIndexOf = Array.prototype.lastIndexOf;
-    Mixed.prototype.map = Array.prototype.map;
-    Mixed.prototype.reduce = Array.prototype.reduce;
-    Mixed.prototype.reduceRight = Array.prototype.reduceRight;
-    Mixed.prototype.slice = Array.prototype.slice;
-    Mixed.prototype.some = Array.prototype.some;
-    Mixed.prototype.length = 0;
+    function callSubscribers(prop,value,oldValue)
+    {
 
-    Mixed.
+    }
 
-    return Mixed();
+    /* ENDREGION Event Listeners */
+
+    Object.defineProperties(Mixed.prototype,{
+
+      /* Non destructive Array methods */
+      concat:setDescriptor(Array.prototype.concat),
+      every:setDescriptor(Array.prototype.every),
+      filter:setDescriptor(Array.prototype.filter),
+      find:setDescriptor(Array.prototype.find),
+      findIndex:setDescriptor(Array.prototype.findIndex),
+      forEach:setDescriptor(Array.prototype.forEach),
+      includes:setDescriptor(Array.prototype.includes),
+      indexOf:setDescriptor(Array.prototype.indexOf),
+      join:setDescriptor(Array.prototype.join),
+      lastIndexOf:setDescriptor(Array.prototype.lastIndexOf),
+      map:setDescriptor(Array.prototype.map),
+      reduce:setDescriptor(Array.prototype.reduce),
+      reduceRight:setDescriptor(Array.prototype.reduceRight),
+      slice:setDescriptor(Array.prototype.slice),
+      some:setDescriptor(Array.prototype.some),
+
+      /* Object Methods */
+      add:setDescriptor(add),
+      set:setDescriptor(set),
+      del:setDescriptor(del),
+      addPrototype:setDescriptor(addPrototype),
+      addPointer:setDescriptor(addPointer),
+      move:setDescriptor(move),
+      copy:setDescriptor(copy),
+      merge:setDescriptor(merge),
+
+      /* Array Methods */
+      entries:setDescriptor(entries),
+      copyWithin:setDescriptor(copyWithin),
+      fill:setDescriptor(fill),
+      pop:setDescriptor(pop),
+      push:setDescriptor(push),
+      reverse:setDescriptor(reverse),
+      shift:setDescriptor(shift),
+      sort:setDescriptor(sort),
+      splice:setDescriptor(splice),
+      toLocaleString:setDescriptor(toLocaleString),
+      unshift:setDescriptor(unshift),
+
+      /* Event Listeners */
+      stopChange:setDescriptor(stopChange),
+      callSubscribers:setDescriptor(callSubscribers)
+    });
+
+    return Mixed(data,name,parent,scope);
   }
   return CreateKObservable;
-}
+});
