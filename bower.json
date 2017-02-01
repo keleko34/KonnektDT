@@ -1,7 +1,7 @@
 {
   "name": "kobservable",
   "description": "Observable data model",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "main": "index",
   "authors": [
     "Keleko34"
