@@ -23,17 +23,62 @@ define([],function(){
           "reverse":[],
           "postreverse":[],
           "sort":[],
-          "postsort":[]
+          "postsort":[],
+          "addlistener":[],
+          "postaddlistener":[],
+          "removelistener":[],
+          "postremovelistener":[],
+          "addchildlistener":[],
+          "postaddchildlistener":[],
+          "removechildlistener":[],
+          "postremovechildlistener":[]
         },
-
+        
+        _loopEvents = function(events,e)
+        {
+            if(!e._stopPropogration && events)
+            {
+              for (var x = 0, len = events.length; x !== len; x++) 
+              {
+                  events[x](e);
+                  if (e._stopPropogration) break;
+              }
+            }
+        },
+        
         /* fix for events, local and global, child events and * events, copy KB lib */
         _onevent = function(e)
         {
-          for(var x=0,_curr=_events[e.type],len=_curr.length;x!==len;x++)
+          if(e.listener)
           {
-              _curr[x](e);
-              if(e._stopPropogration) break;
+            var _local = e.local[e.listener],
+                _child = e.local[(e.listener.replace('__kb','__kbparent'))];
+            
+            /* Local */
+            if(isObject.call(_local))
+            {
+              _loopEvents(_local[e.key],e);
+              _loopEvents(_local['*'],e);
+            }
+            else
+            {
+              _loopEvents(_local,e);
+            }
+            
+            /* Child */
+            if(isObject.call(_child))
+            {
+              _loopEvents(_child[e.key],e);
+              _loopEvents(_child['*'],e);
+            }
+            else
+            {
+              _loopEvents(_child,e);
+            }
           }
+          
+          _loopEvents(_events[e.type],e);
+          
           return e._preventDefault;
         }
 
@@ -78,10 +123,15 @@ define([],function(){
         __kbref:setDescriptor((parent ? (parent.__kbref || parent) : prox),true,true),
         __kbscopeString:setDescriptor((scope || ""),true,true),
         __kbImmediateParent:setDescriptor((parent || null),true,true),
-        __kblisteners:setDescriptor([]),
-        __kbupdatelisteners:setDescriptor([]),
+        __kbsubscribers:setDescriptor({}),
+        __kblisteners:setDescriptor({}),
+        __kbupdatelisteners:setDescriptor({}),
+        __kbparentlisteners:setDescriptor({}),
+        __kbparentupdatelisteners:setDescriptor({}),
         __kbcreatelisteners:setDescriptor([]),
         __kbdeletelisteners:setDescriptor([]),
+        __kbparentcreatelisteners:setDescriptor([]),
+        __kbparentdeletelisteners:setDescriptor([]),
         __kbpointers:setDescriptor({}),
         length:setDescriptor(0,true)
       });
@@ -90,6 +140,19 @@ define([],function(){
       {
         prox[keys[x]] = data[keys[x]];
       }
+      
+      KObservable.addActionListener('addlistener',function(e){
+        
+      })
+      .addActionListener('removelistener',function(e){
+        
+      })
+      .addActionListener('addchildlistener',function(e){
+        
+      })
+      .addActionListener('removechildlistener',function(e){
+        
+      })
 
       return prox;
     }
@@ -207,7 +270,7 @@ define([],function(){
         {
           if(typeof value === 'object')
           {
-            value = Mixed(value,target.__kbname,(target.__kbscopeString+(target.__kbscopeString.length !== 0 ? "." : "")+key),target);
+            value = Mixed(value,target.__kbname,target,(target.__kbscopeString+(target.__kbscopeString.length !== 0 ? "." : "")+key));
 
             var e = new eventObject(target,key,'create',value,undefined,[],'__kbcreatelisteners',target._stopChange),
                 onEvent = _onevent(e);
@@ -277,14 +340,12 @@ define([],function(){
     function proxyDelete(target,key)
     {
       /* change size */
-      var e = new eventObject(target,key,'delete',value,undefined,[],'__kbdeletelisteners',target._stopChange),
+      var e = new eventObject(target,key,'delete',target[key],undefined,[],'__kbdeletelisteners',target._stopChange),
           onEvent = _onevent(e);
       if(onEvent !== true)
       {
-        if(typeof target[key] === 'object')
-        {
-          target[key] = null;
-        }
+        if(typeof target[key] === 'object') target[key] = null;
+        
         delete target[key];
         e.listener = '__kbupdatelisteners';
         e.type = 'postdelete'
@@ -466,7 +527,7 @@ define([],function(){
     /* Handle listener sharing (done in addlistener Methods) */
     function addPointer(passobj,prop,newProp)
     {
-      if(!(passobj instanceof Mixed)) passobj = Mixed(passobj.__kbname,(''),passobj,passobj);
+      if(!(passobj instanceof Mixed)) passobj = Mixed(passobj,passobj.__kbname,passobj,(''));
 
       this[(newProp || prop)] = passobj;
 
@@ -487,15 +548,8 @@ define([],function(){
     {
       this[prop] = obj[prop];
 
-      if(obj instanceof Mixed)
-      {
-        delete obj[prop];
-      }
-      else
-      {
-        obj[prop] = null;
-        delete obj[prop];
-      }
+      if(!(obj instanceof Mixed)) obj[prop] = null;
+      delete obj[prop];
       return this;
     }
 
@@ -533,14 +587,29 @@ define([],function(){
 
     /* REGION Array methods */
 
-    function entries() //from array but should also be for object
+    function copyWithin(target,start,end)
     {
-
-    }
-
-    function copyWithin()
-    {
-
+      start = (start || 0);
+      end = (end || 0);
+      
+      var e = new eventObject(this,target,'copyWithin',this[target],undefined,arguments,'');
+      
+      if(_onevent(e) !== true && target < this.length)
+      {
+        target = (target < 0 ? (this.length-1) : target);
+        start = (start < this.length ? start : (this.length-1));
+        end = (end < this.length ? end : (this.length-1));
+        start = (start < 0 ? (this.length-1) : start);
+        end = (start < 0 ? (this.length-1) : end);
+        
+        for(var x=start;x<=end;x++)
+        {
+          this[(target+(x-start))] = this[x];
+        }
+        e.type = 'postcopyWithin';
+        _onevent(e);
+      }
+      return this;
     }
 
     function fill(value,start,end)
@@ -682,11 +751,6 @@ define([],function(){
       }
     }
 
-    function toLocaleString()
-    {
-
-    }
-
     function unshift()
     {
       var e = new eventObject(this,0,'unshift',this[0],undefined,arguments,'');
@@ -719,100 +783,308 @@ define([],function(){
       this._stopChange = true;
       return this;
     }
-
+    
+    function splitScopeString(scopeString)
+    {
+      return scopeString.split('.');
+    }
+    
+    function getLayer(scopeString)
+    {
+      var scope = splitScopeString(scopeString);
+      function rec(scope)
+      {
+        var key = scope[0];
+        
+        if(!isMixed(this[key])) return this;
+        
+        if((scope.length-1) !== 0)
+        {
+          scope.shift();
+          return rec.call(this[key],scope);
+        }
+        return this[key];
+      }
+      return rec.call(this,scope);
+    }
+    
     function addListener(type,listener)
     {
-
+      return function(prop,func)
+      {
+        arguments = Array.prototype.slice.call(arguments);
+        arguments.push(type);
+        var _listeners = this[listener],
+            e = new eventObject(this,listener,'addlistener',_listeners,undefined,arguments,'');
+        
+        if(typeof prop === 'string' && splitScopeString(prop).length !== 1)
+        {
+          var scopeString = splitScopeString(prop);
+          scopeString.pop();
+          scopeString.join(".");
+          e.local = this.getLayer(scopeString);
+          _listeners = e.local[listener];
+          e.value = _listeners;
+          prop = splitScopeString(prop).pop();
+        }
+        
+        if(_onevent(e) !== true)
+        {
+          if(isObject.call(_listeners))
+          {
+            if(_listeners[prop] === undefined) _listeners[prop] = [];
+            _listeners[prop].push(func);
+            e.type ='postaddlistener'
+            _onevent(e);
+          }
+          else if(isArray.call(_listeners))
+          {
+            if(typeof prop === 'function')
+            {
+              _listeners.push(prop);
+              e.type ='postaddlistener'
+              _onevent(e);
+            }
+          }
+        }
+        return this;
+      }
     }
 
     function removeListener(type,listener)
     {
-
+      return function(prop,func)
+      {
+        arguments = Array.prototype.slice.call(arguments);
+        arguments.push(type);
+        var _listeners = this[listener],
+            e = new eventObject(this,listener,'removelistener',_listeners,undefined,arguments,'');
+        
+        if(typeof prop === 'string' && splitScopeString(prop).length !== 1)
+        {
+          var scopeString = splitScopeString(prop);
+          scopeString.pop();
+          scopeString.join(".");
+          e.local = this.getLayer(scopeString);
+          _listeners = e.local[listener];
+          e.value = _listeners;
+          
+          prop = splitScopeString(prop).pop();
+        }
+        
+        if(_onevent(e) !== true)
+        {
+          if(isObject.call(_listeners))
+          {
+            if(_listeners[prop] !== undefined)
+            {
+              for(var x=0,len=_listeners[prop].length;x<len;x++)
+              {
+                if(_listeners[prop][x].toString() === func.toString())
+                {
+                  _listeners[prop].splice(x,1);
+                  e.type = 'postremovelistener';
+                  _onevent(e);
+                  break;
+                }
+              }
+            }
+          }
+          else if(isArray.call(_listeners))
+          {
+            if(typeof prop === 'function')
+            {
+              for(var x=0,len=_listeners.length;x<len;x++)
+              {
+                if(_listeners[x].toString() === func.toString())
+                {
+                  _listeners.splice(x,1);
+                  e.type = 'postremovelistener';
+                  _onevent(e);
+                  break;
+                }
+              }
+            }
+          }
+        }
+        return this;
+      }
     }
 
     function addActionListener(type,func)
     {
-
+      if(_events[type] !== undefined)
+      {
+        _events[type].push(func);
+      }
+      return this;
     }
 
     function removeActionListener(type,func)
     {
-
+      if(_events[type] !== undefined)
+      {
+        for(var x=0,len=_events[type];x<len;x++)
+        {
+          if(_events[type][x].toString() === func.toString())
+          {
+            _events[type].splice(x,1);
+            break;
+          }
+        }
+      }
+      return this;
     }
-
-    function addDataListener(prop,func)
+    
+    function addChildListener(type,listener)
     {
+      function recAddListener(prop,func,listener)
+      {
+        var children = Object.keys(this).filter((function(p){
+          return (isMixed.call(this[p]));
+        }).bind(this));
+        
+        var _local = this,
+            _locProp = prop;
+        if(typeof prop === 'string' && splitScopeString(prop).length !== 1)
+        {
+          var scopeString = splitScopeString(prop);
+          _locProp = scopeString.pop();
+          scopeString.join(".");
+          
+          _local = this.getLayer(scopeString);
+        }
+        
+        if(isObject.call(_local[listener]))
+        {
+          if(_local[listener][_locProp] === undefined) _local[listener][_locProp] = [];
+          _local[listener][_locProp].push(func);
+        }
+        else
+        {
+          _local[listener].push(func);
+        }
 
+        for(var x=0,len=children.length;x<len;x++)
+        {
+          recAddListener.call(this[children[x]],prop,func,listener);
+        }
+      }
+      
+      return function(prop,func)
+      {
+        arguments = Array.prototype.slice.call(arguments);
+        arguments.push(type);
+        var e = new eventObject(this,listener,'addchildlistener',undefined,undefined,arguments,'');
+        if(_onevent(e) !== true)
+        {
+          recAddListener.call(this,prop,func,listener);
+          e.type = 'postaddchildlistener';
+          _onevent(e);
+        }
+        return this;
+      }
     }
-
-    function removeDataListener(prop,func)
+    
+    function removeChildListener(type,listener)
     {
+      function recRemoveListener(prop,func,listener)
+      {
+        var children = Object.keys(this).filter((function(p){
+          return (isMixed.call(this[p]));
+        }).bind(this));
+        
+        var _local = this,
+            _locProp = prop;
+        if(typeof prop === 'string' && splitScopeString(prop).length !== 1)
+        {
+          var scopeString = splitScopeString(prop);
+          _locProp = scopeString.pop();
+          scopeString.join(".");
+          
+          _local = this.getLayer(scopeString);
+        }
+        
+        if(isObject.call(_local[listener]))
+        {
+          if(_local[listener][_locProp] !== undefined)
+          {
+            for(var x=0,len=_local[listener][_locProp].length;x<len;x++)
+            {
+              if(_local[listener][_locProp][x].toString() === func.toString())
+              {
+                _local[listener][_locProp].splice(x,1);
+                break;
+              }
+            }
+          }
+        }
+        else
+        {
+          for(var x=0,len=_local[listener].length;x<len;x++)
+          {
+            if(_local[listener][x].toString() === func.toString())
+            {
+              _local[listener].splice(x,1);
+              break;
+            }
+          }
+        }
 
-    }
-
-    function addDataCreateListener(prop,func)
-    {
-
-    }
-
-    function removeDataCreateListener(prop,func)
-    {
-
-    }
-
-    function addDataDeleteListener(prop,func)
-    {
-
-    }
-
-    function removeDataDeleteListener(prop,func)
-    {
-
-    }
-
-    function addChildDataListener(prop,func)
-    {
-
-    }
-
-    function removeChildDataListener(prop,func)
-    {
-
-    }
-
-    function addChildDataCreateListener(prop,func)
-    {
-
-    }
-
-    function removeChildDataCreateListener(prop,func)
-    {
-
-    }
-
-    function addChildDataDeleteListener(prop,func)
-    {
-
-    }
-
-    function removeChildDataDeleteListener(prop,func)
-    {
-
+        for(var x=0,len=children.length;x<len;x++)
+        {
+          recRemoveListener.call(this[children[x]],prop,func,listener);
+        }
+      }
+      
+      return function(prop,func)
+      {
+        arguments = Array.prototype.slice.call(arguments);
+        arguments.push(type);
+        var e = new eventObject(this,listener,'removechildlistener',undefined,undefined,arguments,'');
+        if(_onevent(e) !== true)
+        {
+          recRemoveListener.call(this,prop,func,listener);
+          e.type = 'postremovechildlistener';
+          _onevent(e);
+        }
+        return this;
+      }
     }
 
     function subscribe(prop,func)
     {
-
+      if(this.__kbsubscribers[prop] === undefined) this.__kbsubscribers[prop] = [];
+      this.__kbsubscribers[prop].push(func);
+      return this;
     }
 
     function unsubscribe(prop,func)
     {
-
+      if(this.__kbsubscribers[prop] !== undefined)
+      {
+        for(var x=0,len=this.__kbsubscribers[prop].length;x<len;x++)
+        {
+          if(this.__kbsubscribers[prop][x].toString() === func.toString())
+          {
+            this.__kbsubscribers[prop].splice(x,1);
+            break;
+          }
+        }
+      }
+      return this;
     }
 
     function callSubscribers(prop,value,oldValue)
     {
-
+      if(this.__kbsubscribers[prop] !== undefined)
+      {
+        for(var x=0,len = this.__kbsubscribers[prop].length;x<len;x++)
+        {
+          this.__kbsubscribers[prop].call(this,prop,value,oldValue);
+        }
+      }
+      return this;
     }
 
     /* ENDREGION Event Listeners */
@@ -835,6 +1107,8 @@ define([],function(){
       reduceRight:setDescriptor(Array.prototype.reduceRight),
       slice:setDescriptor(Array.prototype.slice),
       some:setDescriptor(Array.prototype.some),
+      entries:setDescriptor(Array.prototype.entries),
+      toLocaleString:setDescriptor(Array.prototype.toLocaleString),
 
       /* Object Methods */
       add:setDescriptor(add),
@@ -847,7 +1121,6 @@ define([],function(){
       merge:setDescriptor(merge),
 
       /* Array Methods */
-      entries:setDescriptor(entries),
       copyWithin:setDescriptor(copyWithin),
       fill:setDescriptor(fill),
       pop:setDescriptor(pop),
@@ -856,12 +1129,42 @@ define([],function(){
       shift:setDescriptor(shift),
       sort:setDescriptor(sort),
       splice:setDescriptor(splice),
-      toLocaleString:setDescriptor(toLocaleString),
       unshift:setDescriptor(unshift),
-
+      
+      /* Helpers */
+      getLayer:setDescriptor(getLayer),
+      
       /* Event Listeners */
+      addActionListener:setDescriptor(addActionListener),
+      removeActionListener:setDescriptor(removeActionListener),
+      subscribe:setDescriptor(subscribe),
+      unsubscribe:setDescriptor(unsubscribe),
+      callSubscribers:setDescriptor(callSubscribers),
       stopChange:setDescriptor(stopChange),
-      callSubscribers:setDescriptor(callSubscribers)
+      _stopChange:setDescriptor(undefined,true)
+    });
+    
+    Object.defineProperties(Mixed.prototype,{
+      
+      /* Standard Data Listeners as a single layer */
+      addDataListener:setDescriptor(addListener('addDataListener','__kblisteners')),
+      removeDataListener:setDescriptor(removeListener('removeDataListener','__kblisteners')),
+      addDataUpdateListener:setDescriptor(addListener('addDataUpdateListener','__kbupdatelisteners')),
+      removeDataUpdateListener:setDescriptor(removeListener('removeDataUpdateListener','__kbupdatelisteners')),
+      addDataCreateListener:setDescriptor(addListener('addDataCreateListener','__kbcreatelisteners')),
+      removeDataCreateListener:setDescriptor(removeListener('removeDataCreateListener','__kbcreatelisteners')),
+      addDataDeleteListener:setDescriptor(addListener('addDataDeleteListener','__kbdeletelisteners')),
+      removeDataDeleteListener:setDescriptor(removeListener('removeDataDeleteListener','__kbdeletelisteners')),
+      
+      /* MultiLayer Child Listeners */
+      addChildDataListener:setDescriptor(addChildListener('addChildDataListener','__kbparentlisteners')),
+      removeChildDataListener:setDescriptor(removeChildListener('removeChildDataListener','__kbparentlisteners')),
+      addChildDataUpdateListener:setDescriptor(addChildListener('addChildDataUpdateListener','__kbparentupdatelisteners')),
+      removeChildDataUpdateListener:setDescriptor(removeChildListener('removeChildDataUpdateListener','__kbparentupdatelisteners')),
+      addChildDataCreateListener:setDescriptor(addChildListener('addChildDataCreateListener','__kbparentcreatelisteners')),
+      removeChildDataCreateListener:setDescriptor(removeChildListener('removeChildDataCreateListener','__kbparentcreatelisteners')),
+      addChildDataDeleteListener:setDescriptor(addChildListener('addChildDataDeleteListener','__kbparentdeletelisteners')),
+      removeChildDataDeleteListener:setDescriptor(removeChildListener('removeChildDataDeleteListener','__kbparentdeletelisteners')),
     });
 
     return Mixed(data,name,parent,scope);
