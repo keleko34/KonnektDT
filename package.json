@@ -1,6 +1,6 @@
 {
   "name": "kobservable",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "An observable data model",
   "keywords": [
     "Object",
