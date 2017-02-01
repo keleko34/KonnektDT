@@ -35,8 +35,10 @@
     "K_Tasks": "^0.5.0"
   },
   "scripts": {
-    "installer": "npm i git+https://github.com/keleko34/gulp.git -g && npm i && bower i",
-    "i": "npm i git+https://github.com/keleko34/gulp.git -g && npm i && bower i"
+    "installer": "npm run installGulp && npm run installBower && npm i && bower i",
+    "i": "npm run installGulp && npm run installBower && npm i && bower i",
+    "installBower": "npm info bower -g || npm i bower -g",
+    "installGulp": "npm info gulp -g || npm i git+https://github.com/keleko34/gulp.git -g"
   },
   "maintainers": [
     {

@@ -142,16 +142,16 @@ define([],function(){
       }
       
       KObservable.addActionListener('addlistener',function(e){
-        
+        if(typeof e.arguments[0] === 'string' && e.local.__kbpointers.indexOf(e.arguments[0]) !== -1)
+        {
+          e.local[e.arguments[0]].__kbImmediateParent[e.arguments[2]](e.key,e.arguments[1]);
+        }
       })
       .addActionListener('removelistener',function(e){
-        
-      })
-      .addActionListener('addchildlistener',function(e){
-        
-      })
-      .addActionListener('removechildlistener',function(e){
-        
+        if(typeof e.arguments[0] === 'string' && e.local.__kbpointers.indexOf(e.arguments[0]) !== -1)
+        {
+          e.local[e.arguments[0]].__kbImmediateParent[e.arguments[2]](e.key,e.arguments[1]);
+        }
       })
 
       return prox;
@@ -250,7 +250,126 @@ define([],function(){
       }
     }
 
+    function parseParentListenersToNewObjects(mixed,target)
+    {
+      var listeners = [
+        {listener:'__kbparentlisteners',action:'addChildListener'},
+        {listener:'__kbparentupdatelisteners',action:'addChildUpdateListener'},
+        {listener:'__kbparentcreatelisteners',action:'addChildCreateListener'},
+        {listener:'__kbparentdeletelisteners',action:'addChildDeleteListener'}],
+          keys = [],
+          _currListener;
+      
+      for(var x=0,len=listeners.length;x<len;x++)
+      {
+        _currListener = mixed[listeners[x].listener];
+        if(isObject.call(_currListener))
+        {
+          keys = Object.keys(_currListener);
+          for(var i=0,lenI=keys.length;i<lenI;i++)
+          {
+            for(var z=0,lenZ=_currListener[keys[i]].length;z<lenZ;z++)
+            {
+              target[listeners[x].method](keys[i],_currListener[keys[i]][z]);
+            }
+          }
+        }
+        else
+        {
+          for(var i=0,lenI=_currListener.length;i<lenI;i++)
+          {
+            target[listeners[x].method](_currListener[i]);
+          } 
+        }
+      }
+    }
+    
+    function parsePointerEvents(target,key)
+    {
+      var events = [
+        {listeners:'__kblisteners',method:'addDataListener'},
+        {listeners:'__kbupdatelisteners',method:'addDataUpdateListener'}
+      ],
+      keys = [],
+      _currListener;
+      
+      for(var x=0,len=events.length;x<len;x++)
+      {
+        _currListener = target[events[x].listener];
+        keys = Object.keys(_currListener);
+        for(var i=0,lenI=keys.length;i<lenI;i++)
+        {
+          if(key === keys[x])
+          {
+            for(var z=0,lenZ=_currListener[keys[x]].length;z<lenZ;z++)
+            {
+              if(target[key].__kbImmediateParent[events[x].listener][key] === undefined) target[key].__kbImmediateParent[events[x].listener][key] = [];
+              target[key].__kbImmediateParent[events[x].listener][key].push(_currListener[keys[x]][z]);
+            }
+          }
+        }
+      }
+      parseParentListenersToNewObjects(target,target[key]);
+    }
+    
+    function handleNewObject(target,key,value,isCreated)
+    {
+      value = Mixed(value,target.__kbname,target,(target.__kbscopeString+(target.__kbscopeString.length !== 0 ? "." : "")+key));
+            
+      parseParentListenersToNewObjects(target,value);
+      
+      if(isCreated)
+      {
+        var e = new eventObject(target,key,'create',value,undefined,[],'__kbcreatelisteners',target._stopChange),
+          onEvent = _onevent(e);
+        if(onEvent !== true)
+        {
+          Object.defineProperty(target,key,setBindDescriptor(key,value));
+          e.listener = '__kbupdatelisteners';
+          e.type = 'postcreate'
+          _onevent(e);
+        }
+        return (onEvent !== true);
+      }
+      else
+      {
+        Object.defineProperty(target,key,setBindDescriptor(key,value));
+        return true;
+      }
+      
+    }
+    
+    function handleNewMixed(target,key,value,isCreated)
+    {
+      if(isCreated)
+      {
+        var e = new eventObject(target,key,'create',value,undefined,[],'__kbcreatelisteners',target._stopChange),
+            onEvent = _onevent(e);
+        if(onEvent !== true)
+        {
+          var desc = Object.getOwnPropertyDescriptor(value.__kbImmediateParent,key);
+          Object.defineProperty(target,key,setPointer(value.__kbImmediateParent,key,desc));
+          target.__kbpointers.push(key);
 
+          parsePointerEvents(target,key)
+
+          e.listener = '__kbupdatelisteners';
+          e.type = 'postcreate';
+          _onevent(e);
+        }
+        return (onEvent !== true);
+      }
+      else
+      {
+        var desc = Object.getOwnPropertyDescriptor(value.__kbImmediateParent,key);
+        Object.defineProperty(target,key,setPointer(value.__kbImmediateParent,key,desc));
+        target.__kbpointers.push(key);
+        parsePointerEvents(target,key);
+        return true;
+      }
+      
+    }
+    
     /* create check if value is just undefined but descriptor is set */
     function proxySet(target,key,value)
     {
@@ -268,34 +387,14 @@ define([],function(){
         }
         else
         {
+          /* A new property was added */
           if(typeof value === 'object')
           {
-            value = Mixed(value,target.__kbname,target,(target.__kbscopeString+(target.__kbscopeString.length !== 0 ? "." : "")+key));
-
-            var e = new eventObject(target,key,'create',value,undefined,[],'__kbcreatelisteners',target._stopChange),
-                onEvent = _onevent(e);
-            if(onEvent !== true)
-            {
-              Object.defineProperty(target,key,setBindDescriptor(key,value));
-              e.listener = '__kbupdatelisteners';
-              e.type = 'postcreate'
-              _onevent(e);
-            }
-            return (onEvent !== true);
+            return handleNewObject(target,key,value,true);
           }
           else if(value instanceof Mixed)
           {
-            var e = new eventObject(target,key,'create',value,undefined,[],'__kbcreatelisteners',target._stopChange),
-                onEvent = _onevent(e);
-            if(onEvent !== true)
-            {
-              var desc = Object.getOwnPropertyDescriptor(value.__kbImmediateParent,key);
-              Object.defineProperty(target,key,setPointer(value.__kbImmediateParent,key,desc));
-              e.listener = '__kbupdatelisteners';
-              e.type = 'postcreate';
-              _onevent(e);
-            }
-            return (onEvent !== true);
+            return handleNewMixed(target,key,value,true);
           }
           else
           {
@@ -331,12 +430,24 @@ define([],function(){
         }
         else
         {
-          target[key] = value;
+          if(typeof value === 'object')
+          {
+            return handleNewObject(target,key,value);
+          }
+          else if(value instanceof Mixed)
+          {
+            return handleNewMixed(target,key,value);
+          }
+          else
+          {
+            target[key] = value;
+          }
         }
         return true;
       }
     }
-
+    
+    /* Need to handle removing parentListeners prior to removal */
     function proxyDelete(target,key)
     {
       /* change size */
@@ -953,12 +1064,19 @@ define([],function(){
           scopeString.join(".");
           
           _local = this.getLayer(scopeString);
+          if(_local[listener][prop] === undefined) _local[listener][prop] = [];
+          _local[listener][prop].push(func);
         }
         
         if(isObject.call(_local[listener]))
         {
           if(_local[listener][_locProp] === undefined) _local[listener][_locProp] = [];
           _local[listener][_locProp].push(func);
+          if(_local.__kbpointers.indexOf(_locProp) !== -1)
+          {
+            if(_local[_locProp].__kbImmediateParent[listener][_locProp] === undefined) _local[_locProp].__kbImmediateParent[listener][_locProp] = [];
+            _local[_locProp].__kbImmediateParent[listener][_locProp].push(_func);
+          }
         }
         else
         {
@@ -1003,6 +1121,17 @@ define([],function(){
           scopeString.join(".");
           
           _local = this.getLayer(scopeString);
+          if(_local[listener][prop] !== undefined)
+          {
+            for(var x=0,len=_local[listener][prop].length;x<len;x++)
+            {
+              if(_local[listener][prop][x].toString() === func.toString())
+              {
+                _local[listener][prop].splice(x,1);
+                break;
+              }
+            }
+          }
         }
         
         if(isObject.call(_local[listener]))
@@ -1015,6 +1144,20 @@ define([],function(){
               {
                 _local[listener][_locProp].splice(x,1);
                 break;
+              }
+            }
+            if(_local.__kbpointers.indexOf(_locProp) !== -1)
+            {
+              if(_local[_locProp].__kbImmediateParent[listener][_locProp] !== undefined)
+              {
+                for(var x=0,len=_local[_locProp].__kbImmediateParent[listener][_locProp].length;x<len;x++)
+                {
+                  if(_local[_locProp].__kbImmediateParent[listener][_locProp][x].toString() === func.toString())
+                  {
+                    _local[_locProp].__kbImmediateParent[listener][_locProp].splice(x,1);
+                    break;
+                  }
+                } 
               }
             }
           }
