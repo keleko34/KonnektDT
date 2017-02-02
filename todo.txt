@@ -1,3 +1,4 @@
-- do events
-- finish array methods
++ do events
++ finish array methods
+- rework how pointers work
 

@@ -643,7 +643,6 @@ define([],function(){
       this[(newProp || prop)] = passobj;
 
       this.__kbpointers[(newProp || prop)] = passobj;
-
     }
 
     function del(key)
