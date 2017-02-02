@@ -142,15 +142,15 @@ define([],function(){
       }
       
       KonnektDT.addActionListener('addlistener',function(e){
-        if(typeof e.arguments[0] === 'string' && e.local.__kbpointers.indexOf(e.arguments[0]) !== -1)
+        if(typeof e.arguments[0] === 'string' && e.local.__kbpointers[e.arguments[0]] !== undefined)
         {
-          e.local[e.arguments[0]].__kbImmediateParent[e.arguments[2]](e.key,e.arguments[1]);
+          e.local.__kbpointers[e.arguments[0]][e.arguments[2]](e.arguments[0],e.arguments[1]);
         }
       })
       .addActionListener('removelistener',function(e){
-        if(typeof e.arguments[0] === 'string' && e.local.__kbpointers.indexOf(e.arguments[0]) !== -1)
+        if(typeof e.arguments[0] === 'string' && e.local.__kbpointers[e.arguments[0]] !== undefined)
         {
-          e.local[e.arguments[0]].__kbImmediateParent[e.arguments[2]](e.key,e.arguments[1]);
+           e.local.__kbpointers[e.arguments[0]][e.arguments[2]](e.arguments[0],e.arguments[1]);
         }
       })
 
@@ -292,19 +292,21 @@ define([],function(){
       ],
       keys = [],
       _currListener;
-      
-      for(var x=0,len=events.length;x<len;x++)
+      if(target[key].__kbImmediateParent)
       {
-        _currListener = target[events[x].listener];
-        keys = Object.keys(_currListener);
-        for(var i=0,lenI=keys.length;i<lenI;i++)
+        for(var x=0,len=events.length;x<len;x++)
         {
-          if(key === keys[x])
+          _currListener = target[events[x].listener];
+          keys = Object.keys(_currListener);
+          for(var i=0,lenI=keys.length;i<lenI;i++)
           {
-            for(var z=0,lenZ=_currListener[keys[x]].length;z<lenZ;z++)
+            if(key === keys[x])
             {
-              if(target[key].__kbImmediateParent[events[x].listener][key] === undefined) target[key].__kbImmediateParent[events[x].listener][key] = [];
-              target[key].__kbImmediateParent[events[x].listener][key].push(_currListener[keys[x]][z]);
+              for(var z=0,lenZ=_currListener[keys[x]].length;z<lenZ;z++)
+              {
+                  if(target[key].__kbImmediateParent[events[x].listener][key] === undefined) target[key].__kbImmediateParent[events[x].listener][key] = [];
+                  target[key].__kbImmediateParent[events[x].listener][key].push(_currListener[keys[x]][z]);
+              }
             }
           }
         }
