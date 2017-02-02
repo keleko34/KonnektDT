@@ -1,1 +1,1 @@
-module.exports = require( './KObservable/Min/KObservable.min' );
+module.exports = require( './KonnektDT/Min/KonnektDT.min' );

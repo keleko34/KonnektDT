@@ -1,5 +1,5 @@
 define([],function(){
-  function CreateKObservable(data,name,parent,scope)
+  function CreateKonnektDT(data,name,parent,scope)
   {
     var _events = {
           "set":[],
@@ -110,15 +110,15 @@ define([],function(){
           return Object.prototype._toString.apply(this,arguments);
         }
       }
-      var KObservable = {};
-      KObservable.__proto__ = Mixed.prototype;
+      var KonnektDT = {};
+      KonnektDT.__proto__ = Mixed.prototype;
 
       if(!window.Proxy) return console.error("There is no support for proxy on this browser");
 
-      var prox = new Proxy(KObservable, {set:proxySet,deleteProperty:proxyDelete}),
+      var prox = new Proxy(KonnektDT, {set:proxySet,deleteProperty:proxyDelete}),
           keys = Object.keys(data);
 
-      Object.defineProperties(KObservable,{
+      Object.defineProperties(KonnektDT,{
         __kbname:setDescriptor((typeof name === 'string' ? name : "default"),true,true),
         __kbref:setDescriptor((parent ? (parent.__kbref || parent) : prox),true,true),
         __kbscopeString:setDescriptor((scope || ""),true,true),
@@ -141,7 +141,7 @@ define([],function(){
         prox[keys[x]] = data[keys[x]];
       }
       
-      KObservable.addActionListener('addlistener',function(e){
+      KonnektDT.addActionListener('addlistener',function(e){
         if(typeof e.arguments[0] === 'string' && e.local.__kbpointers.indexOf(e.arguments[0]) !== -1)
         {
           e.local[e.arguments[0]].__kbImmediateParent[e.arguments[2]](e.key,e.arguments[1]);
@@ -1312,5 +1312,5 @@ define([],function(){
 
     return Mixed(data,name,parent,scope);
   }
-  return CreateKObservable;
+  return CreateKonnektDT;
 });

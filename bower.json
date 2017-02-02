@@ -1,5 +1,5 @@
 {
-  "name": "kobservable",
+  "name": "konnektdt",
   "description": "Observable data model",
   "version": "0.4.2",
   "main": "index",
@@ -15,7 +15,7 @@
     "Data Binding",
     "Data Change Events"
   ],
-  "homepage": "https://github.com/keleko34/KObservable",
+  "homepage": "https://github.com/keleko34/konnektdt",
   "ignore": [
     "**/.*",
     "node_modules",
