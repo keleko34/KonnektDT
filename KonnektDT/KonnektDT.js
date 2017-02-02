@@ -82,36 +82,20 @@ define([],function(){
           return e._preventDefault;
         }
 
+    if(!Object.prototype._toString) Object.prototype._toString = Object.prototype.toString;
+
+    Object.prototype.toString = function(){
+      if(this instanceof Mixed) return "[object Mixed]";
+      return Object.prototype._toString.apply(this,arguments);
+    }
+
     /* The Main constructor */
     function Mixed(data,name,parent,scope)
     {
       data = (data === undefined ? {} : data);
-      /* Object prototype extensions chained down to the function */
-      if(!Object.prototype._toString)
-      {
-        Object.defineProperties(Object.prototype,{
-          _toString:setDescriptor(Object.prototype.toString,false,true),
-          typeof:setDescriptor(function(v){return ({}).toString.call(v).match(/\s([a-zA-Z]+)/)[1].toLowerCase();},false,true),
-          sizeof:setDescriptor(sizeof,false,true),
-          isObject:setDescriptor(isObject,false,true),
-          isArray:setDescriptor(isArray,false,true),
-          isMixed:setDescriptor(isMixed,false,true),
-          isObservable:setDescriptor(isObservable,false,true),
-          stringify:setDescriptor(stringify,false,true),
-          getKeys:setDescriptor(getKeys,false,true),
-          getIndexes:setDescriptor(getIndexes,false,true),
-          keyCount:setCustomDescriptor(keyCount,false,true),
-          indexCount:setCustomDescriptor(indexCount,false,true),
-          count:setCustomDescriptor(count,false,true)
-        });
+      /* Object prototype extensions chained down to the function */;
 
-        Object.prototype.toString = function(){
-          if(this instanceof Mixed) return "[object Mixed]";
-          return Object.prototype._toString.apply(this,arguments);
-        }
-      }
       var KonnektDT = {};
-      KonnektDT.__proto__ = Mixed.prototype;
 
       if(!window.Proxy) return console.error("There is no support for proxy on this browser");
 
@@ -133,7 +117,8 @@ define([],function(){
         __kbparentcreatelisteners:setDescriptor([]),
         __kbparentdeletelisteners:setDescriptor([]),
         __kbpointers:setDescriptor({}),
-        length:setDescriptor(0,true)
+        length:setDescriptor(0,true),
+        __kbnonproxy:setDescriptor(KonnektDT,false,true)
       });
 
       for(var x=0,len=keys.length;x<len;x++)
@@ -141,6 +126,8 @@ define([],function(){
         prox[keys[x]] = data[keys[x]];
       }
       
+      KonnektDT.__proto__ = Mixed.prototype;
+
       KonnektDT.addActionListener('addlistener',function(e){
         if(typeof e.arguments[0] === 'string' && e.local.__kbpointers[e.arguments[0]] !== undefined)
         {
@@ -316,7 +303,7 @@ define([],function(){
     
     function handleNewObject(target,key,value,isCreated)
     {
-      value = Mixed(value,target.__kbname,target,(target.__kbscopeString+(target.__kbscopeString.length !== 0 ? "." : "")+key));
+      value = new Mixed(value,target.__kbname,target,(target.__kbscopeString+(target.__kbscopeString.length !== 0 ? "." : "")+key));
             
       parseParentListenersToNewObjects(target,value);
       
@@ -520,21 +507,21 @@ define([],function(){
     {
       if(this == Object.prototype && v === undefined) return console.error("No value specified in Object.prototype.isObject to check");
 
-      return (Object.prototype.typeof((v !== undefined ? (typeof v === 'object' ? v : this[v]) : this)) === 'object');
+      return (Mixed.prototype.typeof((v !== undefined ? (typeof v === 'object' ? v : this[v]) : this)) === 'object');
     }
 
     function isArray(v)
     {
       if(this == Object.prototype && v === undefined) return console.error("No value specified in Object.prototype.isArray to check");
 
-      return (Object.prototype.typeof((v !== undefined ? (typeof v === 'object' ? v : this[v]) : this)) === 'array');
+      return (Mixed.prototype.typeof((v !== undefined ? (typeof v === 'object' ? v : this[v]) : this)) === 'array');
     }
 
     function isMixed(v)
     {
       if(this == Object.prototype && v === undefined) return console.error("No value specified in Object.prototype.isMixed to check");
 
-      return (Object.prototype.typeof((v !== undefined ? (typeof v === 'object' ? v : this[v]) : this)) === 'mixed');
+      return (Mixed.prototype.typeof((v !== undefined ? (typeof v === 'object' ? v : this[v]) : this)) === 'mixed');
     }
 
     function isObservable(obj,prop)
@@ -640,9 +627,10 @@ define([],function(){
     /* Handle listener sharing (done in addlistener Methods) */
     function addPointer(passobj,prop,newProp)
     {
-      if(!(passobj instanceof Mixed)) passobj = Mixed(passobj,passobj.__kbname,passobj,(''));
+      if(!(passobj instanceof Mixed)) passobj = new Mixed(passobj,passobj.__kbname,passobj,(''));
 
-      this[(newProp || prop)] = passobj;
+      var desc = Object.getOwnPropertyDescriptor(passobj,prop);
+      Object.defineProperty(this,(newProp || prop),setPointer(passobj,prop,desc));
 
       this.__kbpointers[(newProp || prop)] = passobj;
     }
@@ -1235,6 +1223,19 @@ define([],function(){
 
     Object.defineProperties(Mixed.prototype,{
 
+      typeof:setDescriptor(function(v){return ({}).toString.call(v).match(/\s([a-zA-Z]+)/)[1].toLowerCase();},false,true),
+      sizeof:setDescriptor(sizeof,false,true),
+      isObject:setDescriptor(isObject,false,true),
+      isArray:setDescriptor(isArray,false,true),
+      isMixed:setDescriptor(isMixed,false,true),
+      isObservable:setDescriptor(isObservable,false,true),
+      stringify:setDescriptor(stringify,false,true),
+      getKeys:setDescriptor(getKeys,false,true),
+      getIndexes:setDescriptor(getIndexes,false,true),
+      keyCount:setCustomDescriptor(keyCount,false,true),
+      indexCount:setCustomDescriptor(indexCount,false,true),
+      count:setCustomDescriptor(count,false,true),
+
       /* Non destructive Array methods */
       concat:setDescriptor(Array.prototype.concat),
       every:setDescriptor(Array.prototype.every),
@@ -1311,7 +1312,7 @@ define([],function(){
       removeChildDataDeleteListener:setDescriptor(removeChildListener('removeChildDataDeleteListener','__kbparentdeletelisteners')),
     });
 
-    return Mixed(data,name,parent,scope);
+    return Mixed;
   }
   return CreateKonnektDT;
 });
