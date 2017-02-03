@@ -1,7 +1,7 @@
 {
   "name": "konnektdt",
   "description": "Observable data model",
-  "version": "0.4.8",
+  "version": "0.4.9",
   "main": "index",
   "authors": [
     "Keleko34"
