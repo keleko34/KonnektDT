@@ -14,8 +14,26 @@ var myMixedObj = mixed(/* You can pass data here to be parsed */);```
 
 ###### Start Node
 ``` var mixed = require('konnektdt')(); //constructor
-var myMixedObj = mixed(/* You can pass data here to be parsed */);
-```
+var myMixedObj = mixed(/* You can pass data here to be parsed */);```
+
+### Structure
+Mixed objects have their own type of `mixed`, they are allowed to be used as both an array and as an object in one
+
+For example:
+```var myMixedObj = mixed({mykey:'mytext'});
+
+myMixedObj.push(2) <-- will show a length of 1```
+
+so both `myMixedObj.mykey` displays and applies to object methods and `myMixedObj[0]` replys to array methods
+
+giving possibilities of looping both on one:
+```Object.keys(myMixedObj).forEach(); (*shorthand myMixedObj.getKeys()) //loops only key 'mykey'
+
+myMixedObj.forEach() //loops only indexes
+
+myMixedObj.length //shows length 1
+
+Object.keys(myMixedObj).length //shows length 1```
 
 ###### Simple Single Layer Events
 ```var myMixedObj = mixed({testkey:'test',testarr:[1,2,3],testobj:{testgreet:'hi'}});
@@ -119,5 +137,4 @@ myMixedObj.addChildDataListener('3.0',function(e){
    ex: both of these props will be listened to
    [1,2,3,[10 <- key of 0] <- key of 3]
    [1,2,3,[10,11,12,[20 <- key of 0] <- key of 3]]
-*/
-```
+*/```

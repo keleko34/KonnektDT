@@ -82,11 +82,19 @@ define([],function(){
         }
 
     if(!Object.prototype._toString) Object.prototype._toString = Object.prototype.toString;
+    if(!Object._keys) Object._keys = Object.keys;
 
     Object.prototype.toString = function(){
       if(this instanceof Mixed) return "[object Mixed]";
       return Object.prototype._toString.apply(this,arguments);
     }
+
+    Object.keys = function(v,type){
+      return Object._keys(v)
+      .filter(function(k){
+        return ((!type) || ((type === 'object' || type === 'o')) ? (isNaN(parseInt(k,10))) : (type === 'all' ? true : (!isNaN(parseInt(k,10)))));
+      });
+    };
 
     Object.defineProperties(Object.prototype,{
       typeof:setDescriptor(function(v){return ({}).toString.call(v).match(/\s([a-zA-Z]+)/)[1].toLowerCase();},false,true),
@@ -114,7 +122,7 @@ define([],function(){
       if(typeof Proxy === 'undefined') return console.error("There is no support for proxies! This library can not be used here, please update Your js library or browser");
 
       var prox = new Proxy(KonnektDT, {set:proxySet,deleteProperty:proxyDelete}),
-          keys = Object.keys(data);
+          keys = Object.keys(data,'all');
 
       Object.defineProperties(KonnektDT,{
         __kbname:setDescriptor((typeof name === 'string' ? name : "default"),true,true),
@@ -479,7 +487,7 @@ define([],function(){
 
       function recGet(obj)
       {
-        var keys = Object.keys(obj),
+        var keys = Object.keys(obj,'all'),
             count = 0,
             _curr = undefined;
 
@@ -574,10 +582,7 @@ define([],function(){
 
       if(this == Object.prototype && v === undefined) return console.error("No object was specified in Object.prototype.getkeys");
 
-      return Object.keys((v !== undefined && typeof v !== 'string' ? (typeof v === 'object' ? v : this[v]) : this))
-      .filter(function(k){
-        return ((!type) || ((type === 'object' || type === 'o')) ? (isNaN(parseInt(k,10))) : (!isNaN(parseInt(k,10))));
-      });
+      return Object.keys((v !== undefined && typeof v !== 'string' ? (typeof v === 'object' ? v : this[v]) : this));
     }
 
     function getIndexes(v)
@@ -1055,7 +1060,7 @@ define([],function(){
     {
       function recAddListener(prop,func,listener)
       {
-        var children = Object.keys(this).filter((function(p){
+        var children = Object.keys(this,'all').filter((function(p){
           return (isMixed.call(this[p]));
         }).bind(this));
         
@@ -1112,7 +1117,7 @@ define([],function(){
     {
       function recRemoveListener(prop,func,listener)
       {
-        var children = Object.keys(this).filter((function(p){
+        var children = Object.keys(this,'all').filter((function(p){
           return (isMixed.call(this[p]));
         }).bind(this));
         
