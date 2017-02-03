@@ -32,7 +32,7 @@
     "url": "https://github.com/keleko34/konnektdt/issues"
   },
   "devDependencies": {
-    "K_Tasks": "^0.5.0"
+    "K_Tasks": "^0.5.3"
   },
   "scripts": {
     "installer": "npm run installGulp && npm run installBower && npm i && bower i",
