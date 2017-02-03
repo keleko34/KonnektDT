@@ -625,14 +625,14 @@ define([],function(){
     }
 
     /* Handle listener sharing (done in addlistener Methods) */
-    function addPointer(passobj,prop,newProp)
+    function addPointer(passobj,prop)
     {
       if(!(passobj instanceof Mixed)) passobj = new Mixed(passobj,passobj.__kbname,passobj,(''));
 
       var desc = Object.getOwnPropertyDescriptor(passobj,prop);
-      Object.defineProperty(this,(newProp || prop),setPointer(passobj,prop,desc));
+      Object.defineProperty(this,(prop),setPointer(passobj,prop,desc));
 
-      this.__kbpointers[(newProp || prop)] = passobj;
+      this.__kbpointers[(prop)] = passobj;
     }
 
     function del(key)
@@ -1061,10 +1061,10 @@ define([],function(){
         {
           if(_local[listener][_locProp] === undefined) _local[listener][_locProp] = [];
           _local[listener][_locProp].push(func);
-          if(_local.__kbpointers.indexOf(_locProp) !== -1)
+          if(_local.__kbpointers[_locProp] !== undefined)
           {
-            if(_local[_locProp].__kbImmediateParent[listener][_locProp] === undefined) _local[_locProp].__kbImmediateParent[listener][_locProp] = [];
-            _local[_locProp].__kbImmediateParent[listener][_locProp].push(_func);
+            if(_local.__kbpointers[_locProp][_locProp] === undefined) _local.__kbpointers[_locProp][_locProp] = [];
+            _local.__kbpointers[_locProp][_locProp].push(_func);
           }
         }
         else
