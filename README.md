@@ -39,17 +39,25 @@ giving possibilities of looping both on one:
 
 ###### Simple Single Layer Events
 
-    var myMixedObj = mixed({testkey:'test',testarr:[1,2,3],testobj:{testgreet:'hi'}});
+    var myMixedObj = mixed({
+      testkey:'test',
+      testarr:[1,2,3],
+      testobj:{testgreet:'hi'}
+    });
 
     /* All listener methods are chainable */
 
-    /* listens for a change to testkey property, prior to being set (can preventDefault) */
+    /* listens for a change to testkey property, 
+       prior to being set (can preventDefault) */
     myMixedObj.addDataListener('testkey',function(e){ 
       console.log("testkey is changing to: %o",e.value);
-      e.preventDefault(); //prevents the value from changing to the new set value *update wont fire when this is used
+      
+      //prevents the value from changing to the new set value *update wont fire when this is used
+      e.preventDefault();
     })
 
-    /* listens for a change to testkey property, after the value has been set (can not preventDefault) */
+    /* listens for a change to testkey property, 
+       after the value has been set (can not preventDefault) */
     .addDataUpdateListener('testkey',function(e){
       console.log("testkey has changed to: %o",e.value);
     })
@@ -77,7 +85,7 @@ giving possibilities of looping both on one:
     })
 
     /* Each method also has an equivelant remove method, for removing the listener 
-       *(note) remember to save the function to match for removal, same as standard dom events */
+     *(note) remember to save the function to match for removal, same as standard dom events */
     function func(e){
       console.log("change happening on %o to value %o",e.key,e.value);
     }
@@ -87,17 +95,23 @@ giving possibilities of looping both on one:
 
 ###### Complex MultiLayer Events
 
-    var myMixedObj = mixed({testkey:'test',testarr:[1,2,3,[10,11,12,[20,21,22]]],testobj:{testgreet:'hi',testother:{testgreet:'goodbye'}}});
+    var myMixedObj = mixed({
+      testkey:'test',
+      testarr:[1,2,3,[10,11,12,[20,21,22]]],
+      testobj:{testgreet:'hi',testother:{testgreet:'goodbye'}}
+    });
 
     /* All listener methods are chainable */
 
-    /* listens for a change on all testgreet properties in this object, prior to being set (can preventDefault) */
+    /* listens for a change on all testgreet properties in this object, 
+       prior to being set (can preventDefault) */
     myMixedObj.addChildDataListener('testgreet',function(e){
      console.log('testgreet is changing to: %o on layer: %o',e.value,e.local);
      e.preventDefault(); //can prevent changes to all keys with this name
     })
 
-    /* listens for a change on all testgreet properties in this object, after the value has been set (can not preventDefault) */
+    /* listens for a change on all testgreet properties in this object, 
+       after the value has been set (can not preventDefault) */
     .addChildDataUpdateListener('0',function(e){
       console.log(" index 0 has changed to: %o on layer: %o",e.value,e.local);
     })
@@ -136,8 +150,35 @@ giving possibilities of looping both on one:
     });
 
     /* Explanation: 
-       This basically will look at the whole object and with every layer that has a key of '3' with a sub prop of '0' it will listen to,
+       This basically will look at the whole object and with every layer 
+       that has a key of '3' with a sub prop of '0' it will listen to,
        ex: both of these props will be listened to
        [1,2,3,[10 <- key of 0] <- key of 3]
        [1,2,3,[10,11,12,[20 <- key of 0] <- key of 3]]
     */
+    
+###### Manipulating The Object
+
+    var myMixedObj = mixed({
+      testkey:'test',
+    });
+    
+    var tempObject = {t:'someprop',s:200};
+    
+    /* All methods are chainable */
+    
+    /* Add new property */
+    myMixedObj.add('newtest',500)
+    
+    /* Chainable set */
+    .set('newtest',1000)
+    
+    /* moves t to our object and deletes original source */
+    .move(tempObject,'t')
+    
+    /* add a pointer prop, so that the value reflects what is in tempObject.s */
+    .addPointer(tempObject,'s')
+    
+    tempObject.s = 100;
+    
+    console.log(myMixedObj.s); //equals 100
