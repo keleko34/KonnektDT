@@ -97,7 +97,7 @@ define([],function(){
 
       var KonnektDT = {};
 
-      if(!window.Proxy) return console.error("There is no support for proxy on this browser");
+      if(typeof Proxy !== 'undefined') return console.error("There is no support for proxies! This library can not be used here, please update Your js library or browser");
 
       var prox = new Proxy(KonnektDT, {set:proxySet,deleteProperty:proxyDelete}),
           keys = Object.keys(data);
