@@ -45,8 +45,7 @@ define([],function(){
               }
             }
         },
-        
-        /* fix for events, local and global, child events and * events, copy KB lib */
+
         _onevent = function(e)
         {
           if(e.listener)
@@ -77,7 +76,7 @@ define([],function(){
             }
           }
           
-          _loopEvents(_events[e.type],e);
+          _loopEvents(e.local.__kbref.__kbevents[e.type],e);
           
           return e._preventDefault;
         }
@@ -88,6 +87,21 @@ define([],function(){
       if(this instanceof Mixed) return "[object Mixed]";
       return Object.prototype._toString.apply(this,arguments);
     }
+
+    Object.defineProperties(Object.prototype,{
+      typeof:setDescriptor(function(v){return ({}).toString.call(v).match(/\s([a-zA-Z]+)/)[1].toLowerCase();},false,true),
+      sizeof:setDescriptor(sizeof,false,true),
+      isObject:setDescriptor(isObject,false,true),
+      isArray:setDescriptor(isArray,false,true),
+      isMixed:setDescriptor(isMixed,false,true),
+      isObservable:setDescriptor(isObservable,false,true),
+      stringify:setDescriptor(stringify,false,true),
+      getKeys:setDescriptor(getKeys,false,true),
+      getIndexes:setDescriptor(getIndexes,false,true),
+      keyCount:setCustomDescriptor(keyCount,false,true),
+      indexCount:setCustomDescriptor(indexCount,false,true),
+      count:setCustomDescriptor(count,false,true),
+    });
 
     /* The Main constructor */
     function Mixed(data,name,parent,scope)
@@ -117,6 +131,7 @@ define([],function(){
         __kbparentcreatelisteners:setDescriptor([]),
         __kbparentdeletelisteners:setDescriptor([]),
         __kbpointers:setDescriptor({}),
+        __kbevents:setDescriptor(_events),
         length:setDescriptor(0,true),
         __kbnonproxy:setDescriptor(KonnektDT,false,true)
       });
@@ -507,21 +522,21 @@ define([],function(){
     {
       if(this == Object.prototype && v === undefined) return console.error("No value specified in Object.prototype.isObject to check");
 
-      return (Mixed.prototype.typeof((v !== undefined ? (typeof v === 'object' ? v : this[v]) : this)) === 'object');
+      return (Object.prototype.typeof((v !== undefined ? (typeof v === 'object' ? v : this[v]) : this)) === 'object');
     }
 
     function isArray(v)
     {
       if(this == Object.prototype && v === undefined) return console.error("No value specified in Object.prototype.isArray to check");
 
-      return (Mixed.prototype.typeof((v !== undefined ? (typeof v === 'object' ? v : this[v]) : this)) === 'array');
+      return (Object.prototype.typeof((v !== undefined ? (typeof v === 'object' ? v : this[v]) : this)) === 'array');
     }
 
     function isMixed(v)
     {
       if(this == Object.prototype && v === undefined) return console.error("No value specified in Object.prototype.isMixed to check");
 
-      return (Mixed.prototype.typeof((v !== undefined ? (typeof v === 'object' ? v : this[v]) : this)) === 'mixed');
+      return (Object.prototype.typeof((v !== undefined ? (typeof v === 'object' ? v : this[v]) : this)) === 'mixed');
     }
 
     function isObservable(obj,prop)
@@ -1013,22 +1028,22 @@ define([],function(){
 
     function addActionListener(type,func)
     {
-      if(_events[type] !== undefined)
+      if(this.__kbref.__kbevents[type] !== undefined)
       {
-        _events[type].push(func);
+        this.__kbref.__kbevents[type].push(func);
       }
       return this;
     }
 
     function removeActionListener(type,func)
     {
-      if(_events[type] !== undefined)
+      if(this.__kbref.__kbevents[type] !== undefined)
       {
-        for(var x=0,len=_events[type];x<len;x++)
+        for(var x=0,len=this.__kbref.__kbevents[type];x<len;x++)
         {
-          if(_events[type][x].toString() === func.toString())
+          if(this.__kbref.__kbevents[type][x].toString() === func.toString())
           {
-            _events[type].splice(x,1);
+            this.__kbref.__kbevents[type].splice(x,1);
             break;
           }
         }
@@ -1222,19 +1237,6 @@ define([],function(){
     /* ENDREGION Event Listeners */
 
     Object.defineProperties(Mixed.prototype,{
-
-      typeof:setDescriptor(function(v){return ({}).toString.call(v).match(/\s([a-zA-Z]+)/)[1].toLowerCase();},false,true),
-      sizeof:setDescriptor(sizeof,false,true),
-      isObject:setDescriptor(isObject,false,true),
-      isArray:setDescriptor(isArray,false,true),
-      isMixed:setDescriptor(isMixed,false,true),
-      isObservable:setDescriptor(isObservable,false,true),
-      stringify:setDescriptor(stringify,false,true),
-      getKeys:setDescriptor(getKeys,false,true),
-      getIndexes:setDescriptor(getIndexes,false,true),
-      keyCount:setCustomDescriptor(keyCount,false,true),
-      indexCount:setCustomDescriptor(indexCount,false,true),
-      count:setCustomDescriptor(count,false,true),
 
       /* Non destructive Array methods */
       concat:setDescriptor(Array.prototype.concat),
