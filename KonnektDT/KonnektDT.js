@@ -34,6 +34,8 @@ define([],function(){
           "postremovechildlistener":[]
         },
         
+        _ignoreList = [],
+        
         _loopEvents = function(events,e)
         {
             if(!e._stopPropogration && events)
@@ -399,27 +401,30 @@ define([],function(){
         }
         else
         {
-          /* A new property was added */
-          if(typeof value === 'object')
+          if(_ignoreList.indexOf(key) === -1)
           {
-            return handleNewObject(target,key,value,true);
-          }
-          else if(value instanceof Mixed)
-          {
-            return handleNewMixed(target,key,value,true);
-          }
-          else
-          {
-            var e = new eventObject(target,key,'create',value,undefined,[],'__kbcreatelisteners',target._stopChange),
-                onEvent = _onevent(e);
-            if(onEvent !== true)
+            /* A new property was added */
+            if(typeof value === 'object')
             {
-              Object.defineProperty(target,key,setBindDescriptor(key,value));
-              e.listener = '__kbupdatelisteners';
-              e.type = 'postcreate';
-              _onevent(e);
+              return handleNewObject(target,key,value,true);
             }
-            return (onEvent !== true);
+            else if(value instanceof Mixed)
+            {
+              return handleNewMixed(target,key,value,true);
+            }
+            else
+            {
+              var e = new eventObject(target,key,'create',value,undefined,[],'__kbcreatelisteners',target._stopChange),
+                onEvent = _onevent(e);
+              if(onEvent !== true)
+              {
+                Object.defineProperty(target,key,setBindDescriptor(key,value));
+                e.listener = '__kbupdatelisteners';
+                e.type = 'postcreate';
+                _onevent(e);
+              }
+              return (onEvent !== true);
+            }
           }
         }
       }
@@ -475,6 +480,12 @@ define([],function(){
         _onevent(e);
       }
       return (onEvent !== true);
+    }
+    
+    function ignoreCreate(name)
+    {
+      if(_ignoreList.indexOf(name) === -1) _ignoreList.push(name);
+      return this;
     }
 
     /* REGION Object extensions */
@@ -1285,6 +1296,7 @@ define([],function(){
       
       /* Helpers */
       getLayer:setDescriptor(getLayer),
+      ignoreCreate:setDescriptor(ignoreCreate),
       
       /* Event Listeners */
       addActionListener:setDescriptor(addActionListener),
