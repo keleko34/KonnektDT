@@ -143,7 +143,8 @@ define([],function(){
         __kbpointers:setDescriptor({}),
         __kbevents:setDescriptor(_events),
         length:setDescriptor(0,true),
-        __kbnonproxy:setDescriptor(KonnektDT,false,true)
+        __kbnonproxy:setDescriptor(KonnektDT,false,true),
+        _stopChange:setDescriptor(false,true)
       });
 
       for(var x=0,len=keys.length;x<len;x++)
@@ -239,7 +240,7 @@ define([],function(){
                  _set(v,e);
                 if(!this._stopChange) this.callSubscribers(_key,_value,_oldValue);
               }
-              this._stopChange = undefined;
+              this._stopChange = false;
           },
           configurable:true,
           enumerable:true
@@ -255,7 +256,7 @@ define([],function(){
           set:function(v){
 
             (this._stopChange ? obj.stopChange() : obj)[prop] = v;
-            this._stopChange = undefined;
+            this._stopChange = false;
           },
           enumerable:desc.enumerable,
           configurable:desc.configurable
@@ -1304,9 +1305,9 @@ define([],function(){
       subscribe:setDescriptor(subscribe),
       unsubscribe:setDescriptor(unsubscribe),
       callSubscribers:setDescriptor(callSubscribers),
-      stopChange:setDescriptor(stopChange),
-      _stopChange:setDescriptor(undefined,true)
+      stopChange:setDescriptor(stopChange)
     });
+    
     
     Object.defineProperties(Mixed.prototype,{
       
