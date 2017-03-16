@@ -34,7 +34,7 @@ define([],function(){
           "postremovechildlistener":[]
         },
         
-        _ignoreList = [],
+        _ignoreList = ['__proto__'],
         
         _loopEvents = function(events,e)
         {
@@ -149,7 +149,7 @@ define([],function(){
 
       for(var x=0,len=keys.length;x<len;x++)
       {
-        prox[keys[x]] = data[keys[x]];
+        prox[keys[x]] = data[keys[x]];//(data[keys[x]] === 'object'? Mixed(data[keys[x]],name,prox,scope+(scope.length !== 0 ? "." : "")+keys[x]) : data[keys[x]]);
       }
       
       KonnektDT.__proto__ = Mixed.prototype;
@@ -395,7 +395,7 @@ define([],function(){
           key = parseInt(key,10);
           if(target.length <= key) target.length = (key+1);
         }
-        if(target._stopChange)
+        if(target._stopChange || key === '_stopChange')
         {
           target[key] = value;
           return true;
