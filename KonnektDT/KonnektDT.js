@@ -630,28 +630,44 @@ define([],function(){
 
     function add(key,value)
     {
-      if(this[key] === 'undefined')
+      var _layer = (key.indexOf('.') !== -1 ? this.setLayer(key) : this);
+      if(key.indexOf('.') !== -1) key = key.split('.').pop();
+      if(_layer[key] === 'undefined')
       {
-        this[key] = value;
+        _layer[key] = value;
       }
       return this;
     }
 
     function set(key,value)
     {
-      this[key] = value;
+      var _layer = (key.indexOf('.') !== -1 ? this.setLayer(key) : this);
+      if(key.indexOf('.') !== -1) key = key.split('.').pop();
+      _layer[key] = value;
       return this;
+    }
+
+    function exists(key)
+    {
+      var _layer = (key.indexOf('.') !== -1 ? this.getLayer(key) : this);
+      if(key.indexOf('.') !== -1) key = key.split('.').pop();
+
+      if(!_layer) return !!_layer;
+
+      return (_layer[key] !== undefined);
     }
 
     function addPrototype(key,value)
     {
-      if(this[key] === undefined)
+      var _layer = (key.indexOf('.') !== -1 ? this.setLayer(key) : this);
+      if(key.indexOf('.') !== -1) key = key.split('.').pop();
+      if(_layer[key] === undefined)
       {
-        Object.defineProperty(this.__proto__,key,setDescriptor(value,true,true));
+        Object.defineProperty(_layer.__proto__,key,setDescriptor(value,true,true));
       }
       else
       {
-        console.error('Your attempting to add your prototype with the prop %O that already exists on %O',prop,this);
+        console.error('Your attempting to add your prototype with the prop %O that already exists on %O',prop,_layer);
       }
       return this;
     }
@@ -669,7 +685,9 @@ define([],function(){
 
     function del(key)
     {
-      if(this[key] !== undefined)
+      var _layer = (key.indexOf('.') !== -1 ? this.getLayer(key) : this);
+      if(key.indexOf('.') !== -1) key = key.split('.').pop();
+      if(!!_layer && _layer[key] !== undefined)
       {
         delete this[key];
       }
@@ -921,6 +939,27 @@ define([],function(){
       return scopeString.split('.');
     }
     
+    function setLayer(scopeString)
+    {
+      var scope = splitScopeString(scopeString);
+      function rec(scope)
+      {
+        var key = scope[0];
+
+        if(this[key] === undefined && (scope.length-1) !== 0) this[key] = Mixed({},this.__kbname,this,this.__kbscopeString+"."+key);
+
+        if(!isMixed(this[key])) return this;
+
+        if((scope.length-1) !== 0)
+        {
+          scope.shift();
+          return rec.call(this[key],scope);
+        }
+        return this[key];
+      }
+      return rec.call(this,scope);
+    }
+
     function getLayer(scopeString)
     {
       var scope = splitScopeString(scopeString);
@@ -928,6 +967,8 @@ define([],function(){
       {
         var key = scope[0];
         
+        if(this[key] === undefined && (scope.length-1) !== 0) return null;
+
         if(!isMixed(this[key])) return this;
         
         if((scope.length-1) !== 0)
@@ -1278,6 +1319,7 @@ define([],function(){
       add:setDescriptor(add),
       set:setDescriptor(set),
       del:setDescriptor(del),
+      exists:setDescriptor(exists),
       addPrototype:setDescriptor(addPrototype),
       addPointer:setDescriptor(addPointer),
       move:setDescriptor(move),
@@ -1297,6 +1339,7 @@ define([],function(){
       
       /* Helpers */
       getLayer:setDescriptor(getLayer),
+      setLayer:setDescriptor(setLayer),
       ignoreCreate:setDescriptor(ignoreCreate),
       
       /* Event Listeners */
