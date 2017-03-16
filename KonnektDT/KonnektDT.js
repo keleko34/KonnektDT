@@ -646,6 +646,20 @@ define([],function(){
       _layer[key] = value;
       return this;
     }
+    
+    function get(key)
+    {
+      var _layer = (key.indexOf('.') !== -1 ? this.getLayer(key) : this);
+      if(key.indexOf('.') !== -1) key = key.split('.').pop();
+      if(_layer)
+      {
+        return _layer[key];
+      }
+      else
+      {
+        console.warn('Module: KonnektDT, Method: get, nothing exists on %o with the key %o',this,key);
+      }
+    }
 
     function exists(key)
     {
@@ -1318,6 +1332,7 @@ define([],function(){
       /* Object Methods */
       add:setDescriptor(add),
       set:setDescriptor(set),
+      get:setDescriptor(get),
       del:setDescriptor(del),
       exists:setDescriptor(exists),
       addPrototype:setDescriptor(addPrototype),
