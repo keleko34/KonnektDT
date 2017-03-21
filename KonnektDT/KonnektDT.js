@@ -153,7 +153,11 @@ define([],function(){
       }
       
       KonnektDT.__proto__ = Mixed.prototype;
-
+      
+      /* clear listeners */
+      KonnektDT.__kbevents.addlistener = [];
+      KonnektDT.__kbevents.removelistener = [];
+      
       KonnektDT.addActionListener('addlistener',function(e){
         if(typeof e.arguments[0] === 'string' && e.local.__kbpointers[e.arguments[0]] !== undefined)
         {
@@ -341,15 +345,23 @@ define([],function(){
         {
           Object.defineProperty(target,key,setBindDescriptor(key,value));
           e.listener = '__kbupdatelisteners';
-          e.type = 'postcreate'
+          e.type = 'postcreate';
           _onevent(e);
         }
         return (onEvent !== true);
       }
       else
       {
-        Object.defineProperty(target,key,setBindDescriptor(key,value));
-        return true;
+        var e = new eventObject(target,key,'set',value,undefined,[],'__kblisteners',target._stopChange),
+          onEvent = _onevent(e);
+        if(onEvent !== true)
+        {
+          Object.defineProperty(target,key,setBindDescriptor(key,value));
+          e.listener = '__kbupdatelisteners';
+          e.type = 'postset';
+          _onevent(e);
+        }
+        return (onEvent !== true);
       }
       
     }
@@ -689,7 +701,7 @@ define([],function(){
     /* Handle listener sharing (done in addlistener Methods) */
     function addPointer(passobj,prop)
     {
-      if(!(passobj instanceof Mixed)) passobj = new Mixed(passobj,passobj.__kbname,passobj,(''));
+      if(!(passobj instanceof Mixed)) passobj = new Mixed(passobj,passobj.__kbname);
 
       var desc = Object.getOwnPropertyDescriptor(passobj,prop);
       Object.defineProperty(this,(prop),setPointer(passobj,prop,desc));
