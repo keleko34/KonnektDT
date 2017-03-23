@@ -1095,7 +1095,7 @@ define([],function(){
             {
               for(var x=0,len=_listeners.length;x<len;x++)
               {
-                if(_listeners[x].toString() === func.toString())
+                if(_listeners[x].toString() === prop.toString())
                 {
                   _listeners.splice(x,1);
                   e.type = 'postremovelistener';
