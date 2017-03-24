@@ -417,7 +417,7 @@ define([],function(){
           if(_ignoreList.indexOf(key) === -1)
           {
             /* A new property was added */
-            if(typeof value === 'object')
+            if(typeof value === 'object' && !(value instanceof Node))
             {
               return handleNewObject(target,key,value,true);
             }
@@ -460,7 +460,7 @@ define([],function(){
         }
         else
         {
-          if(typeof value === 'object')
+          if(typeof value === 'object' && !(value instanceof Node))
           {
             return handleNewObject(target,key,value);
           }
