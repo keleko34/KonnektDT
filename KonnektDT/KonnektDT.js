@@ -650,6 +650,7 @@ define([],function(){
 
     function add(key,value)
     {
+      if(typeof key === 'number') key = key.toString();
       var _layer = (key.indexOf('.') !== -1 ? this.setLayer(key) : this);
       if(key.indexOf('.') !== -1) key = key.split('.').pop();
       if(_layer[key] === 'undefined')
@@ -661,6 +662,7 @@ define([],function(){
 
     function set(key,value)
     {
+      if(typeof key === 'number') key = key.toString();
       var _layer = (key.indexOf('.') !== -1 ? this.setLayer(key) : this);
       if(key.indexOf('.') !== -1) key = key.split('.').pop();
       _layer[key] = value;
@@ -669,6 +671,7 @@ define([],function(){
     
     function get(key)
     {
+      if(typeof key === 'number') key = key.toString();
       var _layer = (key.indexOf('.') !== -1 ? this.getLayer(key) : this);
       if(key.indexOf('.') !== -1) key = key.split('.').pop();
       if(_layer)
@@ -719,6 +722,7 @@ define([],function(){
 
     function del(key)
     {
+      if(typeof key === 'number') key = key.toString();
       var _layer = (key.indexOf('.') !== -1 ? this.getLayer(key) : this);
       if(key.indexOf('.') !== -1) key = key.split('.').pop();
       if(!!_layer && _layer[key] !== undefined)
