@@ -487,7 +487,15 @@ define([],function(){
       {
         if(typeof target[key] === 'object') target[key] = null;
         
-        delete target[key];
+        if (!isNaN(parseInt(key, 10)))
+        {
+            key = parseInt(key, 10);
+            target.splice(key,1);
+        }
+        else
+        {
+          delete target[key];
+        }
         e.listener = '__kbupdatelisteners';
         e.type = 'postdelete'
         _onevent(e);
@@ -901,7 +909,7 @@ define([],function(){
             {
                 this[i] = this[(i+1)];
             }
-            delete this[(this.length-1)];
+            this.length = (this.length-1);
           }
         }
         if(_insertLen !== 0)
@@ -917,7 +925,7 @@ define([],function(){
           }
         }
         e.type = 'postsplice';
-        e.listener = '';
+        e.listener = '__kbupdatelistener';
         _onevent(e);
         return _ret;
       }
