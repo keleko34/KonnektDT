@@ -400,7 +400,7 @@ define([],function(){
     /* create check if value is just undefined but descriptor is set */
     function proxySet(target,key,value)
     {
-      if(!isObservable.call(target,key))
+      if(!isObservable.call(target,key) && key !== 'length')
       {
         if(!isNaN(parseInt(key,10)))
         {
@@ -485,12 +485,16 @@ define([],function(){
           onEvent = _onevent(e);
       if(onEvent !== true)
       {
-        if(typeof target[key] === 'object') target[key] = null;
+        if(target[key] && typeof target[key] === 'object') target[key] = null;
         
         if (!isNaN(parseInt(key, 10)))
         {
+          if(target[key] !== undefined)
+          {
             key = parseInt(key, 10);
             target.splice(key,1);
+            target.length = (target.length-1);
+          }
         }
         else
         {
@@ -824,7 +828,7 @@ define([],function(){
       if(_onevent(e) !== true)
       {
         var _ret = this[(this.length-1)];
-        this.length = (this.length-1);
+        delete this[(this.length-1)]
         e.type = 'postpop'
         _onevent(e);
         return _ret;
@@ -870,7 +874,7 @@ define([],function(){
         {
             this[x] = this[(x+1)];
         }
-        this.length = (this.length-1);
+        delete this[(this.length-1)]
         e.type = 'postshift';
         _onevent(e);
       }
@@ -913,7 +917,7 @@ define([],function(){
             {
                 this[i] = this[(i+1)];
             }
-            this.length = (this.length-1);
+            delete this[(this.length-1)];
           }
         }
         if(_insertLen !== 0)
