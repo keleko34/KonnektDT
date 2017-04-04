@@ -25,6 +25,8 @@
     ".gulp"
   ],
   "devDependencies": {
-    "requirejs": "~2.1.11"
+    "requirejs": "~2.1.11",
+    "mocha": "^3.2.0",
+    "chai": "^3.5.0"
   }
 }
