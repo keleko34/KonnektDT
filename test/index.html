@@ -2,7 +2,20 @@
 <html>
   <head>
     <title>Testing</title>
-    <script type="text/javascript" src="../KonnektDT/Build/KonnektDT.js"></script>
+    <link rel="stylesheet" href="css/mocha.css" />
+    <script type="text/javascript" src="requirejs"></script>
+    <script type="text/javascript" src="mocha"></script>
   </head>
-    <body></body>
+  <body>
+    <div class="Button_list"></div>
+    <div id="mocha"><p><a href=".">Index</a></p></div>
+    <div id="messages"></div>
+    <div id="fixtures"></div>
+    <script type="text/javascript">
+      mocha.setup('bdd');
+      require(['KonnektDT','chai','./test'],function(CreateKonnektDT,chai,test){
+        test(CreateKonnektDT(),mocha,chai);
+      });
+    </script>
+  </body>
 </html>
