@@ -98,10 +98,6 @@ define([],function(){
       });
     };
 
-    Object.defineProperties(Object.prototype,{
-      
-    });
-
     /* The Main constructor */
     function Mixed(data,name,parent,scope)
     {
@@ -363,15 +359,15 @@ define([],function(){
           _isObject = isObject(value),
           _isArray = isArray(value);
       
-      if(_isMixed && value.__kbname !== obj.__kbname)
+      if(_isMixed && value.__kbname !== target.__kbname)
       {
         if(value.__kbname === 'default')
         {
-          obj.merge(value,key);
+          target.merge(value,key);
         }
-        else if(!obj.__kbpointers[key])
+        else if(!target.__kbpointers[key])
         {
-          obj.addPointer(value.__kbimmediateparent,key);
+          target.addPointer(value.__kbimmediateparent,key);
         }
       }
       else
