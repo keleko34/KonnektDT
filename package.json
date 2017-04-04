@@ -1,6 +1,6 @@
 {
   "name": "konnektdt",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "An observable data model",
   "keywords": [
     "Object",
@@ -37,7 +37,7 @@
   "scripts": {
     "installer": "npm run installGulp && npm run installBower && npm i && bower i",
     "i": "npm run installGulp && npm run installBower && npm i && bower i",
-    "test":"gulp server -p 8080 -r test",
+    "test": "gulp server -p 8080 -r test",
     "installBower": "npm list -g bower || npm i bower -g",
     "installGulp": "npm list -g gulp || npm i git+https://github.com/keleko34/gulp.git -g"
   },
