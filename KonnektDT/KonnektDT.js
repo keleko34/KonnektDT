@@ -341,6 +341,10 @@ define([],function(){
             target.length = value;
           }
         }
+        else
+        {
+          target[key] = value;
+        }
         return true;
       }
     }
@@ -367,7 +371,7 @@ define([],function(){
         }
         else if(!target.__kbpointers[key])
         {
-          target.addPointer(value.__kbimmediateparent,key);
+          target.addPointer(value,key);
         }
       }
       else
@@ -418,7 +422,7 @@ define([],function(){
         }
         else if(!obj.__kbpointers[key])
         {
-          obj.addPointer(value.__kbimmediateparent,key);
+          obj.addPointer(value,key);
         }
       }
       else if(obj[key] === undefined)
