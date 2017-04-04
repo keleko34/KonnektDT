@@ -23,14 +23,14 @@ define(['./testbuttons'],function(testbuttons){
         describe("constructor", function() {
           it("Should convert all rows to observables", function() {
             var mixedData = mixed(data);
-            expect(mixed.isObservable(mixedData,'0')).to.equal(true);
-            expect(mixed.isObservable(mixedData,'1')).to.equal(true);
-            expect(mixed.isObservable(mixedData,'2')).to.equal(true);
+            expect(mixedData.isObservable(mixedData,'0')).to.equal(true);
+            expect(mixedData.isObservable(mixedData,'1')).to.equal(true);
+            expect(mixedData.isObservable(mixedData,'2')).to.equal(true);
             
-            expect(mixed.isObservable(mixedData[1],'greet')).to.equal(true);
-            expect(mixed.isObservable(mixedData[2],'0')).to.equal(true);
+            expect(mixedData.isObservable(mixedData[1],'greet')).to.equal(true);
+            expect(mixedData.isObservable(mixedData[2],'0')).to.equal(true);
             
-            expect(mixed.isObservable(mixedData[2][1],'greet')).to.equal(true);
+            expect(mixedData.isObservable(mixedData[2][1],'greet')).to.equal(true);
           });
 
           it("should set the data __kbname to test", function() {
@@ -108,6 +108,7 @@ define(['./testbuttons'],function(testbuttons){
             
             mixedData.addDataUpdateListener(function(e){
               expect(e.value).to.equal(3);
+              expect(e.local.length).to.equal(2);
               expect(mixedData[e.key]).to.equal(undefined);
               expect(mixedData[0]).to.equal(undefined);
             });

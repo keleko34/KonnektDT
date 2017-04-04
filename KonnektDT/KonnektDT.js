@@ -99,18 +99,7 @@ define([],function(){
     };
 
     Object.defineProperties(Object.prototype,{
-      typeof:setDescriptor(function(v){return ({}).toString.call(v).match(/\s([a-zA-Z]+)/)[1].toLowerCase();},false,true),
-      sizeof:setDescriptor(sizeof,false,true),
-      isObject:setDescriptor(isObject,false,true),
-      isArray:setDescriptor(isArray,false,true),
-      isMixed:setDescriptor(isMixed,false,true),
-      isObservable:setDescriptor(isObservable,false,true),
-      stringify:setDescriptor(stringify,false,true),
-      getKeys:setDescriptor(getKeys,false,true),
-      getIndexes:setDescriptor(getIndexes,false,true),
-      keyCount:setCustomDescriptor(keyCount,false,true),
-      indexCount:setCustomDescriptor(indexCount,false,true),
-      count:setCustomDescriptor(count,false,true),
+      
     });
 
     /* The Main constructor */
@@ -194,12 +183,12 @@ define([],function(){
       this.stopChange = stopChange;
     }
 
-    function setDescriptor(value,writable,redefinable)
+    function setDescriptor(value,writable,redefinable,enumerable)
     {
       return {
           value:value,
           writable:!!writable,
-          enumerable:false,
+          enumerable:!!enumerable,
           configurable:!!redefinable
       }
     }
@@ -481,32 +470,23 @@ define([],function(){
     function proxyDelete(target,key)
     {
       /* change size */
-      var e = new eventObject(target,key,'delete',target[key],undefined,[],'__kbdeletelisteners',target._stopChange),
-          onEvent = _onevent(e);
-      if(onEvent !== true)
+      if (!isNaN(parseInt(key, 10)))
       {
-        if(target[key] && typeof target[key] === 'object') target[key] = null;
-        
-        if (!isNaN(parseInt(key, 10)))
+        if(target[key] !== undefined)
         {
-          if(target[key] !== undefined)
-          {
-            key = parseInt(key, 10);
-            target.splice(key,1);
-            target.length = (target.length-1);
-          }
+          target.length = (target.length-1);
         }
-        else
-        {
-          delete target[key];
-        }
-        e.listener = '__kbupdatelisteners';
-        e.type = 'postdelete';
-        e.oldValue = e.value;
-        e.value = undefined;
-        _onevent(e);
       }
-      return (onEvent !== true);
+      else
+      {
+        target.del(key);
+      }
+      return true;
+    }
+    
+    function recSet(from,to,key,val)
+    {
+      
     }
     
     function ignoreCreate(name)
@@ -516,11 +496,14 @@ define([],function(){
     }
 
     /* REGION Object extensions */
-
+    
+    function type(v)
+    {
+      return ({}).toString.call(v).match(/\s([a-zA-Z]+)/)[1].toLowerCase();
+    }
+    
     function sizeof(v)
     {
-      if(this == Object.prototype && v === undefined) return console.error("No object specified in Object.prototype.sizeof");
-
       var cache = [];
 
       function recGet(obj)
@@ -566,42 +549,33 @@ define([],function(){
 
     function isObject(v)
     {
-      if(this == Object.prototype && v === undefined) return console.error("No value specified in Object.prototype.isObject to check");
-
-      return (Object.prototype.typeof((v !== undefined ? (typeof v === 'object' ? v : this[v]) : this)) === 'object');
+      return (type((v !== undefined ? v : this)) === 'object');
     }
 
     function isArray(v)
     {
-      if(this == Object.prototype && v === undefined) return console.error("No value specified in Object.prototype.isArray to check");
-
-      return (Object.prototype.typeof((v !== undefined ? (typeof v === 'object' ? v : this[v]) : this)) === 'array');
+      return (type((v !== undefined ? v : this)) === 'array');
     }
 
     function isMixed(v)
     {
-      if(this == Object.prototype && v === undefined) return console.error("No value specified in Object.prototype.isMixed to check");
-
-      return (Object.prototype.typeof((v !== undefined ? (typeof v === 'object' ? v : this[v]) : this)) === 'mixed');
+      return (type((v !== undefined ? v : this)) === 'mixed');
     }
 
     function isObservable(obj,prop)
     {
-      if(this == Object.prototype && obj === undefined && prop === undefined) return console.error("No object and property specified in Object.prototype.isObservable to check");
-
-      if(obj === undefined) return console.error("No property specified in isObservable to check");
-
-      var desc = Object.getOwnPropertyDescriptor((obj !== undefined && typeof obj !== 'string' ? obj : this),(prop !== undefined ? prop : obj));
+      prop = (typeof obj === 'string' ? obj : prop);
+      obj = (typeof obj === 'string' ? this : obj);
+      
+      var desc = Object.getOwnPropertyDescriptor(obj,prop);
 
       return (desc ? (desc.value === undefined) : false);
     }
 
     function stringify(v)
     {
-      if(this == Object.prototype && v === undefined) return console.error("No object was specified in Object.prototype.stringify to stringify");
-
         var cache = [];
-        return JSON.stringify(this,function(key, value) {
+        return JSON.stringify((v || this),function(key, value) {
             if(isArray(value) || isObject(value))
             {
                 if (cache.indexOf(value) !== -1)
@@ -616,36 +590,36 @@ define([],function(){
 
     function getKeys(v,type)
     {
-      type = (typeof v === 'string' && type === undefined ? v : type);
+      type = (typeof v === 'string' ? v : (!type ? 'object' : type));
+      v = (typeof v === 'string' || v === undefined ? this : v);
 
-      if(this == Object.prototype && v === undefined) return console.error("No object was specified in Object.prototype.getkeys");
-
-      return Object.keys((v !== undefined && typeof v !== 'string' ? (typeof v === 'object' ? v : this[v]) : this));
+      return Object.keys(v,type);
     }
 
     function getIndexes(v)
     {
-      if(this == Object.prototype && v === undefined) return console.error("No object was specified in Object.prototype.getIndexes");
-
-      var _arr = (v !== undefined ? (typeof v === 'object' ? v : this[v]) : this);
-      return _arr.slice()
-      .map(function(v,i){return (i)})
-      .filter(function(v){
-        return (_arr[v] !== undefined)
-      });
+      v = (v !== undefined ? (typeof v === 'object' ? v : this[v]) : this);
+      
+      var _ret = [];
+      for(var x=0,len=v.length;x<len;x++)
+      {
+        if(v[x] !== undefined) _ret[_ret.length] = x;
+      }
+      
+      return _ret
     }
 
     function keyCount()
     {
-      return this.getKeys('o').length
+      return this.getKeys('object').length;
     }
 
-    function indexCount(v)
+    function indexCount()
     {
       return (this).length;
     }
 
-    function count(v)
+    function count()
     {
       return (this.keyCount + this.indexCount);
     }
@@ -653,28 +627,24 @@ define([],function(){
     /* ENDREGION Object extensions */
 
     /* REGION Object methods */
-
+    
     function add(key,value)
     {
-      if(typeof key === 'number') key = key.toString();
-      var _layer = (key.indexOf('.') !== -1 ? this.setLayer(key) : this);
-      if(key.indexOf('.') !== -1) key = key.split('.').pop();
-      if(_layer[key] === 'undefined')
-      {
-        _layer[key] = value;
-      }
+      set.call(this,key,value);
       return this;
     }
 
     function set(key,value)
     {
       if(typeof key === 'number') key = key.toString();
-      var _layer = (key.indexOf('.') !== -1 ? this.setLayer(key) : this);
+      var _layer = (key.indexOf('.') !== -1 ? this.__kbnonproxy.setLayer(key) : this.__kbnonproxy);
       if(key.indexOf('.') !== -1) key = key.split('.').pop();
+      //add recSet here
       _layer[key] = value;
       return this;
     }
     
+    /* Always return Proxy if used `.get` and `.getlayer` both apply this rule */
     function get(key)
     {
       if(typeof key === 'number') key = key.toString();
@@ -692,7 +662,7 @@ define([],function(){
 
     function exists(key)
     {
-      var _layer = (key.indexOf('.') !== -1 ? this.getLayer(key) : this);
+      var _layer = (key.indexOf('.') !== -1 ? this.__kbnonproxy.getLayer(key) : this.__kbnonproxy);
       if(key.indexOf('.') !== -1) key = key.split('.').pop();
 
       if(!_layer) return !!_layer;
@@ -702,7 +672,7 @@ define([],function(){
 
     function addPrototype(key,value)
     {
-      var _layer = (key.indexOf('.') !== -1 ? this.setLayer(key) : this);
+      var _layer = (key.indexOf('.') !== -1 ? this.__kbnonproxy.setLayer(key) : this.__kbnonproxy);
       if(key.indexOf('.') !== -1) key = key.split('.').pop();
       if(_layer[key] === undefined)
       {
@@ -716,24 +686,59 @@ define([],function(){
     }
 
     /* Handle listener sharing (done in addlistener Methods) */
-    function addPointer(passobj,prop)
+    function addPointer(passobj,prop,newprop)
     {
       if(!(passobj instanceof Mixed)) passobj = new Mixed(passobj,passobj.__kbname);
 
       var desc = Object.getOwnPropertyDescriptor(passobj,prop);
-      Object.defineProperty(this,(prop),setPointer(passobj,prop,desc));
+      Object.defineProperty(this.__kbnonproxy,(newprop || prop),setPointer(passobj,prop,desc));
 
-      this.__kbpointers[(prop)] = passobj;
+      this.__kbnonproxy.__kbpointers[(newprop || prop)] = passobj;
     }
-
+    
+    /* handles all deleting */
     function del(key)
     {
-      if(typeof key === 'number') key = key.toString();
-      var _layer = (key.indexOf('.') !== -1 ? this.getLayer(key) : this);
-      if(key.indexOf('.') !== -1) key = key.split('.').pop();
-      if(!!_layer && _layer[key] !== undefined)
+      var _isNumber = (typeof key === 'number');
+      if(_isNumber) key = key.toString();
+      var _layer = (key.indexOf('.') !== -1 ? this.getLayer(key) : this),
+          _localProp = key.split('.').pop();
+      
+      if(!!_layer && _layer[_localProp] !== undefined)
       {
-        delete this[key];
+        if(_layer.length !== 0 && _isNumber)
+        {
+          _layer = _layer.__kbnonproxy;
+          
+          _layer.splice(_localProp,1);
+          if(typeof window.Proxy !== 'undefined') proxyDelete(_layer,_localProp);
+        }
+        else
+        {
+          var e = new eventObject(_layer,key,'delete',_layer[_localProp],undefined,[],'__kbdeletelisteners',this._stopChange),
+            onEvent = _onevent(e);
+
+          if(onEvent !== true)
+          {
+            _layer = _layer.__kbnonproxy;
+            
+            if(_layer.length !== 0 && _isNumber)
+            {
+              _layer.splice(_localProp,1);
+              if(typeof window.Proxy !== 'undefined') proxyDelete(_layer,_localProp);
+            }
+            else
+            {
+              Object.defineProperty(_layer,_localProp,setDescriptor(undefined,true,true,false));
+            }
+
+            e.listener = '__kbupdatelisteners';
+            e.type = 'postdelete';
+            e.oldValue = e.value;
+            e.value = undefined;
+            _onevent(e);
+          } 
+        }
       }
       return this;
     }
@@ -1338,7 +1343,21 @@ define([],function(){
     /* ENDREGION Event Listeners */
 
     Object.defineProperties(Mixed.prototype,{
-
+      
+      /* Helper methods */
+      typeof:setDescriptor(function(v){return ({}).toString.call(v).match(/\s([a-zA-Z]+)/)[1].toLowerCase();},false,true),
+      sizeof:setDescriptor(sizeof,false,true),
+      isObject:setDescriptor(isObject,false,true),
+      isArray:setDescriptor(isArray,false,true),
+      isMixed:setDescriptor(isMixed,false,true),
+      isObservable:setDescriptor(isObservable,false,true),
+      stringify:setDescriptor(stringify,false,true),
+      getKeys:setDescriptor(getKeys,false,true),
+      getIndexes:setDescriptor(getIndexes,false,true),
+      keyCount:setCustomDescriptor(keyCount,false,true),
+      indexCount:setCustomDescriptor(indexCount,false,true),
+      count:setCustomDescriptor(count,false,true),
+      
       /* Non destructive Array methods */
       concat:setDescriptor(Array.prototype.concat),
       every:setDescriptor(Array.prototype.every),
