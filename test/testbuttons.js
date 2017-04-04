@@ -31,6 +31,32 @@ define([],function(){
       }
     }
     
+    window._Proxy = window.Proxy;
+    var useProxyButton = document.createElement('button'),
+        useProxy = (!!window._Proxy);
+    useProxyButton.innerHTML = "Use Proxy: "+(useProxy ? 'on' : 'off');
+    useProxyButton.onclick = function()
+    {
+      if(!!window._Proxy)
+      {
+        useProxy = !useProxy;
+        useProxyButton.innerHTML = "Use Proxy: "+(useProxy ? 'on' : 'off');
+        if(useProxy)
+        {
+          window.Proxy = window._Proxy;
+        }
+        else
+        {
+          window.Proxy = undefined;
+        }
+      }
+    }
+    
+    var tests = '<h2>Tests</h2><div class="Button_list__TestList"></div>',
+        testContainer = document.createElement('div');
+    testContainer.innerHTML = tests;
+    var testList = testContainer.querySelector('.Button_list__TestList');
+    
     var constructButton = document.createElement('button');
     constructButton.innerHTML = "Constructor Test";
     constructButton.onclick = testEvent('test_simple_create');
@@ -43,10 +69,19 @@ define([],function(){
     multiBindButton.innerHTML = "Multi Layer Bind Test";
     multiBindButton.onclick = testEvent('test_multi_bind');
     
+    var pointerBindButton = document.createElement('button');
+    pointerBindButton.innerHTML = "Pointer Bind Test";
+    pointerBindButton.onclick = testEvent('test_pointer_bind');
+    
     buttonList.appendChild(clearButton);
-    buttonList.appendChild(constructButton);
-    buttonList.appendChild(simpleBindButton);
-    buttonList.appendChild(multiBindButton);
+    buttonList.appendChild(useProxyButton);
+    buttonList.appendChild(testContainer);
+    
+    /* tests */
+    testList.appendChild(constructButton);
+    testList.appendChild(simpleBindButton);
+    testList.appendChild(multiBindButton);
+    testList.appendChild(pointerBindButton);
     
     return config;
   }

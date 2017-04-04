@@ -188,7 +188,7 @@ define([],function(){
       this.name = obj.__kbname;
       this.root = obj.__kbref;
       this.scope = obj.__kbscopeString;
-      this.parent = obj.___kbImmediateParent;
+      this.parent = obj.__kbImmediateParent;
       this.value = value;
       this.oldValue = oldValue;
       this.stopChange = stopChange;
@@ -501,7 +501,9 @@ define([],function(){
           delete target[key];
         }
         e.listener = '__kbupdatelisteners';
-        e.type = 'postdelete'
+        e.type = 'postdelete';
+        e.oldValue = e.value;
+        e.value = undefined;
         _onevent(e);
       }
       return (onEvent !== true);
@@ -1035,12 +1037,11 @@ define([],function(){
         if(typeof prop === 'string' && splitScopeString(prop).length !== 1)
         {
           var scopeString = splitScopeString(prop);
-          scopeString.pop();
-          scopeString.join(".");
+          prop = scopeString.pop();
+          scopeString = scopeString.join(".");
           e.local = this.getLayer(scopeString);
           _listeners = e.local[listener];
           e.value = _listeners;
-          prop = splitScopeString(prop).pop();
         }
         
         if(_onevent(e) !== true)
@@ -1165,11 +1166,11 @@ define([],function(){
         {
           var scopeString = splitScopeString(prop);
           _locProp = scopeString.pop();
-          scopeString.join(".");
+          scopeString = scopeString.join(".");
           
           _local = this.getLayer(scopeString);
-          if(_local[listener][prop] === undefined) _local[listener][prop] = [];
-          _local[listener][prop].push(func);
+          if(_local[listener][_locProp] === undefined) _local[listener][_locProp] = [];
+          _local[listener][_locProp].push(func);
         }
         
         if(isObject.call(_local[listener]))
