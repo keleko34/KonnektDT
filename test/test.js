@@ -107,7 +107,8 @@ define(['./testbuttons'],function(testbuttons){
             var mixedData = mixed(data,"test");
             
             mixedData.addDataUpdateListener(function(e){
-              expect(e.value).to.equal(3);
+              expect(e.value).to.equal(undefined);
+              expect(e.oldValue).to.equal(3);
               expect(e.local.length).to.equal(2);
               expect(mixedData[e.key]).to.equal(undefined);
               expect(mixedData[0]).to.equal(undefined);
@@ -302,10 +303,7 @@ define(['./testbuttons'],function(testbuttons){
     
     function test_pointer_bind()
     {
-      var dataA_A = {coolio:'super'},
-          dataA_B = {coolio:'super'},
-          dataA_C = {coolio:'super'},
-          dataB = [
+      var dataB = [
             {s:'q',test:'yay',fire:{to:{tell:'something'}}},
             {s:'g',test:'far',fire:{to:{tell:'how'}}},
             {s:'f',test:'cool',fire:{to:{tell:'why'}}}
@@ -386,6 +384,49 @@ define(['./testbuttons'],function(testbuttons){
                 }(x))
               }
           })
+          it("Should have the same values even with different set key names",function()
+          {
+            var mixedDataB = mixed(dataB,'dataB'),
+                  mixedDatasA = [],
+                  keys_B = ['test','tell'];
+            
+              for(var x=0,len=mixedDataB.length;x<len;x++)
+              {
+                (function(it){
+                  mixedDatasA.push(mixed({},'dataA'+x));
+                  
+                  for(var i=0,keys=Object.keys(mixedDataB[it]),lenI=keys.length;i<lenI;i++)
+                  {
+                    mixedDatasA[it].addPointer(mixedDataB[it],keys[i],keys[i]+"er");
+                  }
+                  
+                  mixedDatasA[it].addDataUpdateListener('tester',function(e){
+                    expect(e.name).to.equal('dataB');
+                    expect(e.local.__kbname).to.equal('dataB');
+                    expect(e.local.__kbref).to.deep.equal(mixedDataB);
+                    expect(e.root).to.deep.equal(mixedDataB);
+                    expect([500,700]).to.include.members([e.value]);
+                    expect(keys_B).to.include.members([e.key]);
+                    expect(mixedDataB[it].test).to.equal(mixedDatasA[it].tester);
+                  })
+                  .addDataUpdateListener('fireer.to.tell',function(e){
+                    expect(e.name).to.equal('dataB');
+                    expect(e.local.__kbname).to.equal('dataB');
+                    expect(e.local.__kbref).to.deep.equal(mixedDataB);
+                    expect(e.root).to.deep.equal(mixedDataB);
+                    expect([500,700]).to.include.members([e.value]);
+                    expect(keys_B).to.include.members([e.key]);
+                    expect(mixedDataB[it].fire.to.tell).to.equal(mixedDatasA[it].fireer.to.tell);
+                  });
+                  
+                  mixedDatasA[it].tester = 500;
+                  mixedDatasA[it].fireer.to.tell = 500;
+                  
+                  mixedDataB[it].test = 700;
+                  mixedDataB[it].fire.to.tell = 700;
+                }(x))
+              }
+          });
         });
        });
       

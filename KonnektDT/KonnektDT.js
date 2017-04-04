@@ -470,12 +470,9 @@ define([],function(){
     function proxyDelete(target,key)
     {
       /* change size */
-      if (!isNaN(parseInt(key, 10)))
+      if (!isNaN(parseInt(key, 10)) && target[key] === undefined)
       {
-        if(target[key] !== undefined)
-        {
-          target.length = (target.length-1);
-        }
+        target.length = (target.length-1);
       }
       else
       {
@@ -699,7 +696,7 @@ define([],function(){
     /* handles all deleting */
     function del(key)
     {
-      var _isNumber = (typeof key === 'number');
+      var _isNumber = (typeof key === 'number' || !isNaN(parseInt(key,10)));
       if(_isNumber) key = key.toString();
       var _layer = (key.indexOf('.') !== -1 ? this.getLayer(key) : this),
           _localProp = key.split('.').pop();
@@ -711,7 +708,7 @@ define([],function(){
           _layer = _layer.__kbnonproxy;
           
           _layer.splice(_localProp,1);
-          if(typeof window.Proxy !== 'undefined') proxyDelete(_layer,_localProp);
+          if(typeof window.Proxy !== 'undefined') proxyDelete(_layer,(_layer.length-1));
         }
         else
         {
@@ -722,15 +719,7 @@ define([],function(){
           {
             _layer = _layer.__kbnonproxy;
             
-            if(_layer.length !== 0 && _isNumber)
-            {
-              _layer.splice(_localProp,1);
-              if(typeof window.Proxy !== 'undefined') proxyDelete(_layer,_localProp);
-            }
-            else
-            {
-              Object.defineProperty(_layer,_localProp,setDescriptor(undefined,true,true,false));
-            }
+            Object.defineProperty(_layer,_localProp,setDescriptor(undefined,true,true,false));
 
             e.listener = '__kbupdatelisteners';
             e.type = 'postdelete';
