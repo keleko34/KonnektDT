@@ -1,6 +1,6 @@
 {
   "name": "konnektdt",
-  "version": "0.7.6",
+  "version": "0.7.7",
   "description": "An observable data model",
   "keywords": [
     "Object",
