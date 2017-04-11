@@ -603,7 +603,7 @@ define([],function(){
       var _layer = (key.indexOf('.') !== -1 ? this.__kbnonproxy.setLayer(key) : this.__kbnonproxy);
       if(key.indexOf('.') !== -1) key = key.split('.').pop();
       
-      var e = new eventObject(this,key,'set',value,undefined,arguments,'__kbmethodlisteners'),
+      var e = new eventObject(this,key,'set',value,(this[key]),arguments,'__kbmethodlisteners'),
           onEvent = _onevent(e);
       
       if(onEvent !== true)
