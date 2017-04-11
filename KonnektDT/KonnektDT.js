@@ -81,7 +81,9 @@ define([],function(){
           _loopEvents(e.local.__kbref.__kbevents[e.type],e);
           
           return e._preventDefault;
-        }
+        },
+        
+        ArrSort = Array.prototype.sort;
 
     if(!Object.prototype._toString) Object.prototype._toString = Object.prototype.toString;
     if(!Object._keys) Object._keys = Object.keys;
@@ -668,7 +670,7 @@ define([],function(){
       
           if(_onevent(e) !== true)
           {
-            var desc = Object.getOwnPropertyDescriptor(passobj,prop);
+            var desc = Object.getOwnPropertyDescriptor(passobj,prop);          
             Object.defineProperty(_layer,prop,setPointer(passobj,prop,desc));
 
             _layer.__kbpointers[prop] = passobj;
@@ -915,7 +917,7 @@ define([],function(){
           _layer = this.__kbnonproxy;
       if(_onevent(e) !== true)
       {
-        _layer.sort.apply(_layer,arguments);
+        ArrSort.apply(_layer,arguments);
         e.type = 'postsort';
         e.listener = '__kbmethodupdatelisteners';
         _onevent(e);
