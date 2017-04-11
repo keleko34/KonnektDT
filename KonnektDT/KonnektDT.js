@@ -602,7 +602,17 @@ define([],function(){
       if(typeof key === 'number') key = key.toString();
       var _layer = (key.indexOf('.') !== -1 ? this.__kbnonproxy.setLayer(key) : this.__kbnonproxy);
       if(key.indexOf('.') !== -1) key = key.split('.').pop();
-      recSet.call(this,_layer,key,value);
+      
+      var e = new eventObject(this,key,'set',value,undefined,arguments,'__kbmethodlisteners'),
+          onEvent = _onevent(e);
+      
+      if(onEvent !== true)
+      {
+        recSet.call(this,_layer,key,value);
+        e.type = 'postset';
+        e.listener = '__kbmethodupdatelisteners';
+        _onevent(e);
+      }
       return this;
     }
     
