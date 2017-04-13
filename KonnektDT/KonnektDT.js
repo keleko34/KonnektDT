@@ -716,10 +716,12 @@ define([],function(){
         }
         else
         {
+          var eM = new eventObject(_layer,key,'delete',_layer[_localProp],undefined,[],'__kbmethodlisteners'),
+          onMEvent = _onevent(eM);
           var e = new eventObject(_layer,key,'delete',_layer[_localProp],undefined,[],'__kbdeletelisteners',this._stopChange),
             onEvent = _onevent(e);
 
-          if(onEvent !== true)
+          if(onEvent !== true && onMEvent !== true)
           {
             _layer = _layer.__kbnonproxy;
             
@@ -727,6 +729,10 @@ define([],function(){
             delete _layer[_localProp];
             
             if(_isNumber && _layer.length > parseInt(key,10) && bypass) _layer.length = (_layer.length-1);
+            
+            eM.type = 'postdelete';
+            eM.listener = '__kbmethodupdatelisteners';
+            _onevent(eM);
             
             e.listener = '__kbupdatelisteners';
             e.type = 'postdelete';
