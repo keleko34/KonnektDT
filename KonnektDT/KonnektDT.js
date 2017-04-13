@@ -149,13 +149,17 @@ define([],function(){
       KonnektDT.addActionListener('addlistener',function(e){
         if(typeof e.arguments[0] === 'string' && e.local.__kbpointers[e.arguments[0]] !== undefined)
         {
-          e.local.__kbpointers[e.arguments[0]][e.arguments[2]](e.arguments[0],e.arguments[1]);
+          var localPointer = e.local.__kbpointers[e.arguments[0]],
+              localLayer = localPointer.point.getLayer(localPointer.keys);
+          if(localLayer[e.arguments[0]] !== undefined) localLayer[e.arguments[2]](e.arguments[0],e.arguments[1]);
         }
       })
       .addActionListener('removelistener',function(e){
         if(typeof e.arguments[0] === 'string' && e.local.__kbpointers[e.arguments[0]] !== undefined)
         {
-           e.local.__kbpointers[e.arguments[0]][e.arguments[2]](e.arguments[0],e.arguments[1]);
+           var localPointer = e.local.__kbpointers[e.arguments[0]],
+               localLayer = localPointer.point.getLayer(localPointer.keys);
+          if(localLayer[e.arguments[0]] !== undefined) localLayer[e.arguments[2]](e.arguments[0],e.arguments[1]);
         }
       })
 
@@ -239,19 +243,26 @@ define([],function(){
       }
     }
 
-    function setPointer(obj,prop,desc)
+    function setPointer()
     {
+      var points = Array.prototype.slice.call(arguments),
+          obj = points.shift();
+      
       return {
           get:function(){
-              return obj[prop];
+              return points.reduce(function(o,p){
+                return o[p];
+              },obj);
           },
           set:function(v){
-
-            (this._stopChange ? obj.stopChange() : obj)[prop] = v;
+            var local = points.slice(0,(points.length-1)).reduce(function(o,p){
+                  return o[p];
+                },obj);
+            (this._stopChange ? local.stopChange() : local)[points[(points.length-1)]] = v;
             this._stopChange = false;
           },
-          enumerable:desc.enumerable,
-          configurable:desc.configurable
+          enumerable:true,
+          configurable:true
       }
     }
 
@@ -289,6 +300,7 @@ define([],function(){
       }
     }
     
+    /* needs looked into if even necessary */
     function parsePointerEvents(target,key)
     {
       var events = [
@@ -410,7 +422,7 @@ define([],function(){
     }
     
     /* replaces the use of using a proxy to run the parser through */
-    function recSet(obj,key,value)
+    function recSet(obj,key,value,stopChange)
     {
       var _isMixed = isMixed(value),
           _isObject = isObject(value),
@@ -435,7 +447,7 @@ define([],function(){
         }
         else
         {
-          obj[key] = value;
+          (!!stopChange ? obj.stopChange() : obj)[key] = value;
         }
       }
       else
@@ -444,12 +456,12 @@ define([],function(){
         {
           for(var x=0,keys=Object.keys(value,'all'),len=keys.length;x<len;x++)
           {
-            recSet.call(this[key],obj[key],keys[x],value[keys[x]]);
+            recSet.call(this[key],obj[key],keys[x],value[keys[x]],stopChange);
           }
         }
         else
         {
-          obj[key] = value;
+          (!!stopChange ? obj.stopChange() : obj)[key] = value;
         }
       }
     }
@@ -610,7 +622,8 @@ define([],function(){
       
       if(onEvent !== true)
       {
-        recSet.call(this,_layer,key,value);
+        recSet.call(this,_layer,key,value,this._stopChange);
+        this.stopChange = undefined;
         e.type = 'postset';
         e.listener = '__kbmethodupdatelisteners';
         _onevent(e);
@@ -660,8 +673,12 @@ define([],function(){
     }
 
     /* Handle listener sharing (done in addlistener Methods) */
-    function addPointer(passobj,prop)
+    function addPointer()
     {
+      var points = Array.prototype.slice.call(arguments), 
+          passobj = points.shift(),
+          prop = points[(points.length-1)];
+      
       if(!(passobj instanceof Mixed)) passobj = new Mixed(passobj,passobj.__kbname);
       
       var e = new eventObject(this,prop,'create',passobj[prop],undefined,[],'__kbcreatelisteners',this._stopChange),
@@ -669,11 +686,10 @@ define([],function(){
           e.root = passobj.__kbref.__kbproxy;
       
           if(_onevent(e) !== true)
-          {
-            var desc = Object.getOwnPropertyDescriptor(passobj,prop);          
-            Object.defineProperty(_layer,prop,setPointer(passobj,prop,desc));
-
-            _layer.__kbpointers[prop] = passobj;
+          {         
+            Object.defineProperty(_layer,prop,setPointer.apply(_layer,arguments));
+            
+            _layer.__kbpointers[prop] = {keys:points.join('.'),point:passobj};
             parsePointerEvents(_layer,prop);
             e.listener = '__kbupdatelisteners';
             e.type = 'postcreate';
@@ -1212,10 +1228,13 @@ define([],function(){
         {
           if(_local[listener][_locProp] === undefined) _local[listener][_locProp] = [];
           _local[listener][_locProp].push(func);
-          if(_local.__kbpointers[_locProp] !== undefined)
+          
+          var localPointer = _local.__kbpointers[_locProp],
+              localLayer = localPointer.point.getLayer(localPointer.keys);
+          if(localLayer[_locProp] !== undefined)
           {
-            if(_local.__kbpointers[_locProp][_locProp] === undefined) _local.__kbpointers[_locProp][_locProp] = [];
-            _local.__kbpointers[_locProp][_locProp].push(_func);
+            if(localLayer[listener][_locProp] === undefined) localLayer[listener][_locProp] = [];
+            localLayer[listener][_locProp].push(_func);
           }
         }
         else
@@ -1288,13 +1307,15 @@ define([],function(){
             }
             if(_local.__kbpointers.indexOf(_locProp) !== -1)
             {
-              if(_local[_locProp].__kbImmediateParent[listener][_locProp] !== undefined)
+              var localPointer = _local.__kbpointers[_locProp],
+              localLayer = localPointer.point.getLayer(localPointer.keys);
+              if(localLayer[listener][_locProp] !== undefined)
               {
-                for(var x=0,len=_local[_locProp].__kbImmediateParent[listener][_locProp].length;x<len;x++)
+                for(var x=0,len=localLayer[listener][_locProp].length;x<len;x++)
                 {
-                  if(_local[_locProp].__kbImmediateParent[listener][_locProp][x].toString() === func.toString())
+                  if(localLayer[listener][_locProp][x].toString() === func.toString())
                   {
-                    _local[_locProp].__kbImmediateParent[listener][_locProp].splice(x,1);
+                    localLayer[listener][_locProp].splice(x,1);
                     break;
                   }
                 } 
