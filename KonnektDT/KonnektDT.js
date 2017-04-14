@@ -117,6 +117,7 @@ define([],function(){
         __kbscopeString:setDescriptor((scope || ""),true,true),
         __kbImmediateParent:setDescriptor((parent || null),true,true),
         __kbsubscribers:setDescriptor({}),
+        __kbparentsubscribers:setDescriptor({}),
         __kblisteners:setDescriptor({}),
         __kbupdatelisteners:setDescriptor({}),
         __kbparentlisteners:setDescriptor({}),
@@ -234,7 +235,7 @@ define([],function(){
               if(_onevent(e) !== true)
               {
                  _set(v,e);
-                if(!this._stopChange) this.callSubscribers(_key,_value,_oldValue);
+                this.callSubscribers(this.__kbref,this,_key,_value,_oldValue,this._stopChange);
               }
               this._stopChange = false;
           },
@@ -1364,37 +1365,187 @@ define([],function(){
 
     function subscribe(prop,func)
     {
-      var _layer = this.__kbnonproxy;
-      if(_layer.__kbsubscribers[prop] === undefined) _layer.__kbsubscribers[prop] = [];
-      _layer.__kbsubscribers[prop].push(func);
+      var _split = prop.split('.'),
+          _key = _split.pop(),
+          _layer = (_split.length !== 0 ? this.__kbnonproxy.getLayer(_split.join('.')) : this.__kbnonproxy);
+      
+      if(_layer.__kbsubscribers[_key] === undefined) _layer.__kbsubscribers[_key] = [];
+      _layer.__kbsubscribers[_key].push(func);
+      return this;
+    }
+    
+    function subscribeDeep(prop,func)
+    {
+      var _multi = (prop.indexOf('*') !== -1),
+          _split = prop.split('.'),
+          _preSplit = _split.slice(0,_split.indexOf('*')),
+          _multiSplit = (_split.indexOf('*') !== -1 ? _split.slice(_split.indexOf('*'),_split.length) : []),
+          _multiSplitSingle = (_multiSplit.length === 1),
+          _key = _split.pop(),
+          _layer = (_split.length !== 0 ? this.__kbnonproxy.getLayer(_split.join('.')) : this.__kbnonproxy);
+      function recsubscribe(local,key)
+      {
+        var children = Object.keys(this,'all').filter((function(p){
+          return (isMixed.call(this[p]));
+        }).bind(this));
+        
+        if(local[key] !== undefined)
+        {
+          if(local.__kbparentsubscribers[key] === undefined) local.__kbparentsubscribers[key] = [];
+          local.__kbparentsubscribers[key].push(func);
+        }
+        for(var x=0,len=children.length;x<len;x++)
+        {
+          recsubscribe(children[x],key);
+        }
+      }
+      
+      if(!_multi)
+      {
+        recsubscribe(_layer,_key);
+      }
+      else
+      {
+        if(!_multiSplitSingle)
+        {
+          _multiSplit.shift();
+          _layer.subscribeDeep(_multiSplit.join('.'),func);
+        }
+        else
+        {
+          recsubscribe(_layer,'*');
+        }
+      }
       return this;
     }
 
     function unsubscribe(prop,func)
     {
-      var _layer = this.__kbnonproxy;
-      if(_layer.__kbsubscribers[prop] !== undefined)
+      var _multi = (prop === '*'),
+          _split = prop.split('.'),
+          _key = _split.pop(),
+          _layer = (_split.length !== 0 ? this.__kbnonproxy.getLayer(_split.join('.')) : this.__kbnonproxy);
+      if(_layer.__kbsubscribers[_key] !== undefined)
       {
-        for(var x=0,len=_layer.__kbsubscribers[prop].length;x<len;x++)
+        for(var x=0,len=_layer.__kbsubscribers[_key].length;x<len;x++)
         {
-          if(_layer.__kbsubscribers[prop][x].toString() === func.toString())
+          if(_layer.__kbsubscribers[_key][x].toString() === func.toString())
           {
-            _layer.__kbsubscribers[prop].splice(x,1);
+            _layer.__kbsubscribers[_key].splice(x,1);
             break;
           }
         }
       }
       return this;
     }
+    
+    function unsubscribeDeep(prop,func)
+    {
+      var _multi = (prop.indexOf('*') !== -1),
+          _split = prop.split('.'),
+          _preSplit = _split.slice(0,_split.indexOf('*')),
+          _multiSplit = (_split.indexOf('*') !== -1 ? _split.slice(_split.indexOf('*'),_split.length) : []),
+          _multiSplitSingle = (_multiSplit.length === 1),
+          _key = _split.pop(),
+          _layer = (_split.length !== 0 ? this.__kbnonproxy.getLayer(_split.join('.')) : this.__kbnonproxy);
+      function recunsibscribe()
+      {
+        var children = Object.keys(this,'all').filter((function(p){
+          return (isMixed.call(this[p]));
+        }).bind(this));
+        
+        if(local[key] !== undefined)
+        {
+          if(local.__kbparentsubscribers[key] !== undefined)
+          {
+            for(var x=0,len=local.__kbparentsubscribers[key].length;x<len;x++)
+            {
+              if(local.__kbparentsubscribers[key][x].toString() === func.toString()) local.__kbparentsubscribers[key].splice(x,1);
+            }
+          }
+        }
+        for(var x=0,len=children.length;x<len;x++)
+        {
+          recunsibscribe(children[x],key);
+        }
+      }
+      
+      if(!_multi)
+      {
+        recunsibscribe(_layer,_key);
+      }
+      else
+      {
+        if(!_multiSplitSingle)
+        {
+           _multiSplit.shift();
+          _layer.unsubscribeDeep(_multiSplit.join('.'),func);
+        }
+        else
+        {
+          recunsibscribe(_layer,'*');
+        }
+      }
+      return this;
+    }
 
-    function callSubscribers(prop,value,oldValue)
+    function callSubscribers(kbref,obj,prop,value,oldValue,stopChange)
     {
       var _layer = this.__kbnonproxy;
       if(_layer.__kbsubscribers[prop] !== undefined)
       {
         for(var x=0,len = _layer.__kbsubscribers[prop].length;x<len;x++)
         {
-          _layer.__kbsubscribers[prop].call(this,prop,value,oldValue);
+          _layer.__kbsubscribers[prop].call(this,{
+            key:prop,
+            value:value,
+            oldValue:oldValue,
+            stopChange:stopChange,
+            local:obj,
+            kbref:kbref
+          });
+        }
+      }
+      if(_layer.__kbparentsubscribers[prop] !== undefined)
+      {
+        for(var x=0,len = _layer.__kbparentsubscribers[prop].length;x<len;x++)
+        {
+          _layer.__kbparentsubscribers[prop].call(this,{
+            key:prop,
+            value:value,
+            oldValue:oldValue,
+            stopChange:stopChange,
+            local:obj,
+            kbref:kbref
+          });
+        }
+      }
+      if(_layer.__kbsubscribers['*'] !== undefined)
+      {
+        for(var x=0,len = _layer.__kbsubscribers['*'].length;x<len;x++)
+        {
+          _layer.__kbsubscribers['*'].call(this,{
+            key:prop,
+            value:value,
+            oldValue:oldValue,
+            stopChange:stopChange,
+            local:obj,
+            kbref:kbref
+          });
+        }
+      }
+      if(_layer.__kbparentsubscribers['*'] !== undefined)
+      {
+        for(var x=0,len = _layer.__kbparentsubscribers['*'].length;x<len;x++)
+        {
+          _layer.__kbparentsubscribers['*'].call(this,{
+            key:prop,
+            value:value,
+            oldValue:oldValue,
+            stopChange:stopChange,
+            local:obj,
+            kbref:kbref
+          });
         }
       }
       return this;
@@ -1470,6 +1621,8 @@ define([],function(){
       removeActionListener:setDescriptor(removeActionListener),
       subscribe:setDescriptor(subscribe),
       unsubscribe:setDescriptor(unsubscribe),
+      subscribeDeep:setDescriptor(subscribeDeep),
+      unsubscribeDeep:setDescriptor(unsubscribeDeep),
       callSubscribers:setDescriptor(callSubscribers),
       stopChange:setDescriptor(stopChange)
     });
