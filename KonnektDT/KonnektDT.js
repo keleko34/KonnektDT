@@ -1550,6 +1550,71 @@ define([],function(){
       }
       return this;
     }
+    
+    function callAllSubscribers()
+    {
+      var _layer = this.__kbnonproxy;
+      
+      function loop(local,subs,key)
+      {
+        for(var x=0,len=subs.length;x<len;x++)
+        {
+          subs[x].call(local,{
+            key:key,
+            value:local[key],
+            oldValue:local[key],
+            stopChange:false,
+            local:local,
+            kbref:local.__kbref,
+            initial:true
+          });
+        }
+      }
+      
+      function recCall(local)
+      {
+        var subscribers = Object.keys(local.__kbsubscribers),
+            parentSubscribers = Object.keys(local.__kbparentsubscribers);
+        
+        for(var x=0,len=subscribers.length;x<len;x++)
+        {
+          if(local.__kbsubscribers[subscribers[x]].length !== 0)
+          {
+            if(subscribers[x] === '*')
+            {
+              for(var i=0,keys=Object.keys(local),lenn=keys.length;i<lenn;i++)
+              {
+                loop(local,local.__kbsubscribers[subscribers[x]],keys[i]);
+              }
+            }
+            else
+            {
+              loop(local,local.__kbsubscribers[subscribers[x]],subscribers[x]);
+            }
+          }
+        }
+        
+        for(var x=0,len=parentSubscribers.length;x<len;x++)
+        {
+          if(local.__kbparentsubscribers[parentSubscribers[x]].length !== 0)
+          {
+            if(parentSubscribers[x] === '*')
+            {
+              for(var i=0,keys=Object.keys(local),lenn=keys.length;i<lenn;i++)
+              {
+                loop(local,local.__kbparentsubscribers[parentSubscribers[x]],keys[i]);
+              }
+            }
+            else
+            {
+              loop(local,local.__kbparentsubscribers[parentSubscribers[x]],parentSubscribers[x]);
+            }
+          }
+        }
+      }
+      recCall(_layer);
+      return this;
+    }
 
     /* ENDREGION Event Listeners */
 
@@ -1624,6 +1689,7 @@ define([],function(){
       subscribeDeep:setDescriptor(subscribeDeep),
       unsubscribeDeep:setDescriptor(unsubscribeDeep),
       callSubscribers:setDescriptor(callSubscribers),
+      callAllSubscribers:setDescriptor(callAllSubscribers),
       stopChange:setDescriptor(stopChange)
     });
     
