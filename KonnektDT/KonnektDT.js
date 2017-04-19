@@ -1385,18 +1385,18 @@ define([],function(){
           _layer = (_split.length !== 0 ? this.__kbnonproxy.getLayer(_split.join('.')) : this.__kbnonproxy);
       function recsubscribe(local,key)
       {
-        var children = Object.keys(this,'all').filter((function(p){
-          return (isMixed.call(this[p]));
-        }).bind(this));
+        var children = Object.keys(local,'all').filter((function(p){
+          return (isMixed.call(local[p]));
+        }).bind(local));
         
-        if(local[key] !== undefined)
+        if(local[key] !== undefined || key === '*')
         {
           if(local.__kbparentsubscribers[key] === undefined) local.__kbparentsubscribers[key] = [];
           local.__kbparentsubscribers[key].push(func);
         }
         for(var x=0,len=children.length;x<len;x++)
         {
-          recsubscribe(children[x],key);
+          recsubscribe(local[children[x]],key);
         }
       }
       
@@ -1448,13 +1448,13 @@ define([],function(){
           _multiSplitSingle = (_multiSplit.length === 1),
           _key = _split.pop(),
           _layer = (_split.length !== 0 ? this.__kbnonproxy.getLayer(_split.join('.')) : this.__kbnonproxy);
-      function recunsibscribe()
+      function recunsibscribe(local,key)
       {
-        var children = Object.keys(this,'all').filter((function(p){
-          return (isMixed.call(this[p]));
-        }).bind(this));
+        var children = Object.keys(local,'all').filter((function(p){
+          return (isMixed.call(local[p]) && !(local[p] instanceof HTMLElement));
+        }).bind(local));
         
-        if(local[key] !== undefined)
+        if(local[key] !== undefined || key === '*')
         {
           if(local.__kbparentsubscribers[key] !== undefined)
           {
@@ -1466,7 +1466,7 @@ define([],function(){
         }
         for(var x=0,len=children.length;x<len;x++)
         {
-          recunsibscribe(children[x],key);
+          recunsibscribe(local[children[x]],key);
         }
       }
       
@@ -1496,7 +1496,7 @@ define([],function(){
       {
         for(var x=0,len = _layer.__kbsubscribers[prop].length;x<len;x++)
         {
-          _layer.__kbsubscribers[prop].call(this,{
+          _layer.__kbsubscribers[prop][x].call(this,{
             key:prop,
             value:value,
             oldValue:oldValue,
@@ -1510,7 +1510,7 @@ define([],function(){
       {
         for(var x=0,len = _layer.__kbparentsubscribers[prop].length;x<len;x++)
         {
-          _layer.__kbparentsubscribers[prop].call(this,{
+          _layer.__kbparentsubscribers[prop][x].call(this,{
             key:prop,
             value:value,
             oldValue:oldValue,
@@ -1524,7 +1524,7 @@ define([],function(){
       {
         for(var x=0,len = _layer.__kbsubscribers['*'].length;x<len;x++)
         {
-          _layer.__kbsubscribers['*'].call(this,{
+          _layer.__kbsubscribers['*'][x].call(this,{
             key:prop,
             value:value,
             oldValue:oldValue,
@@ -1538,7 +1538,7 @@ define([],function(){
       {
         for(var x=0,len = _layer.__kbparentsubscribers['*'].length;x<len;x++)
         {
-          _layer.__kbparentsubscribers['*'].call(this,{
+          _layer.__kbparentsubscribers['*'][x].call(this,{
             key:prop,
             value:value,
             oldValue:oldValue,
