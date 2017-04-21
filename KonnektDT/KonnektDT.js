@@ -83,7 +83,8 @@ define([],function(){
           return e._preventDefault;
         },
         
-        ArrSort = Array.prototype.sort;
+        ArrSort = Array.prototype.sort,
+        ArrSlice = Array.prototype.slice;
 
     if(!Object.prototype._toString) Object.prototype._toString = Object.prototype.toString;
     if(!Object._keys) Object._keys = Object.keys;
@@ -601,6 +602,94 @@ define([],function(){
     {
       return (this.keyCount + this.indexCount);
     }
+    
+    function parse(json,func)
+    {
+      var obj = {},
+          split = json.split(''),
+          keyCache = [],
+          valCache = [],
+          UKeys = [],
+          inKey = false,
+          inValue = false,
+          scope = '',
+          parent = obj,
+          layer = obj;
+      debugger;
+      for(var x=0,len=split.length,currKey,lastkey,futureKey;x<len;x++)
+      {
+        currKey = split[x];
+        lastKey = split[(x-1)];
+        futureKey = split[(x+1)];
+        
+        /* we have a start of a key */
+        if(!inKey && currKey === '"' && (lastKey === "," || lastKey === '{'))
+        {
+          inKey = true;
+        }
+        
+        /* we reached the end of a key */
+        else if(inKey && currKey === ':' && lastKey === '"')
+        {
+          inKey = false;
+          UKeys[UKeys.length] = keyCache.join('');
+          keyCache = [];
+        }
+        
+        /* we are inside a key */
+        else if(inKey)
+        {
+          keyCache[keyCache.length] = currKey;
+        }
+        
+        /* we have  reached the inside of a simple value */
+        else if(!inValue && lastKey === ':' && currKey === '"')
+        {
+          inValue = true;
+        }
+        
+        /* we have reached an inner object, create new */
+        else if(lastKey === ':' && currKey === '{')
+        {
+          parent = layer;
+          layer = layer[UKeys[(UKeys.length-1)]] = {};
+        }
+        /* we have reached the end of a value */
+        else if(inValue && currKey === '"' && (futureKey === ',' || futureKey === '}'))
+        {
+          inValue = false;
+          layer[(UKeys.length-1)] = valCache.join('');
+          valCache = [];
+        }
+        
+        /* we are inside a value */
+        else if(inValue)
+        {
+          valCache[valCache.length] = currKey;
+        }
+        
+        /* we have reached the end of an inner Object and must go to parent */
+        else if(currKey === '}')
+        {
+          layer = parent;
+        }
+      }
+      return layer;
+    }
+    
+    function parseReplace(json,obj)
+    {
+      return JSON.parse(json,function(key,value){
+        
+      });
+    }
+    
+    function parseMerge(json,obj)
+    {
+      return JSON.parse(json,function(key,value){
+        
+      });
+    }
 
     /* ENDREGION Object extensions */
 
@@ -940,7 +1029,12 @@ define([],function(){
           _layer = this.__kbnonproxy;
       if(_onevent(e) !== true)
       {
-        ArrSort.apply(_layer,arguments);
+        var _arrCopy = ArrSlice.call(_layer);
+        ArrSort.apply(_arrCopy,arguments);
+        for(var x=0,len=_arrCopy.length;x<len;x++)
+        {
+          _layer[x] = _arrCopy[x];
+        }
         e.type = 'postsort';
         e.listener = '__kbmethodupdatelisteners';
         _onevent(e);
