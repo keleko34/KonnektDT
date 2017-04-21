@@ -615,7 +615,6 @@ define([],function(){
           scope = '',
           parent = obj,
           layer = obj;
-      debugger;
       for(var x=0,len=split.length,currKey,lastkey,futureKey;x<len;x++)
       {
         currKey = split[x];
@@ -654,7 +653,7 @@ define([],function(){
           parent = layer;
           layer = layer[UKeys[(UKeys.length-1)]] = {};
         }
-        /* we have reached the end of a value */
+        /* we have reached the end of a value , check for escapes '\'*/
         else if(inValue && currKey === '"' && (futureKey === ',' || futureKey === '}'))
         {
           inValue = false;
