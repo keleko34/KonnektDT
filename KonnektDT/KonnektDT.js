@@ -635,7 +635,9 @@ define([],function(){
       function parseValue(val)
       {
         var i = parseFloat(val,10),
-            b = (val === 'true');
+            b = (val === 'true'),
+            l1 = val.indexOf('"'),
+            l2 = val.lastIndexOf('"');
         if(!isNaN(i) && i.toString().length === val.length)
         {
           return i;
@@ -646,7 +648,14 @@ define([],function(){
         }
         else
         {
-          val = val.substring(1,(val.length-1));
+          if(l1 === 0 && l2 !== 0)
+          {
+            val = val.substring(1,(val.length-1));
+          }
+          else
+          {
+            val = val.substring(1,val.length);
+          }
         }
         return val;
       }
@@ -1790,8 +1799,8 @@ define([],function(){
       entries:setDescriptor(Array.prototype.entries),
       toLocaleString:setDescriptor(Array.prototype.toLocaleString),
       
-      parse:setDescriptor(parse),
-      parseReplace:setDescriptor(parseReplace),
+      parse:setDescriptor(parse,true),
+      parseReplace:setDescriptor(parseReplace,true),
 
       /* Object Methods */
       add:setDescriptor(add),
