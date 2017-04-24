@@ -603,9 +603,86 @@ define([],function(){
       return (this.keyCount + this.indexCount);
     }
     
+    function parseBySplit(json,func)
+    {
+      var layer = Mixed({},'default'),
+          
+          /* This makes sure the selection is not inside a "" string as a value */
+          notInString = '(?=(?:[^"]|"[^"]*")*$)',
+          startObject = '\\{'+notInString,
+          endObject = '\\}'+notInString,
+          startKey1 = '\\{\\"',
+          startKey2 = '\\,\\"'+notInString,
+          startArr = '\\['+notInString,
+          endArr = '\\]'+notInString,
+          nextIndex = '\\,'+notInString,
+          startValue = '\\"\\:',
+          endValue = '\\"\\}',
+          regEx = new RegExp('('+startKey1+'|'+startKey2+'|'+startArr+'|'+endArr+'|'+startValue+'|'+endValue+'|'+startObject+'|'+nextIndex+'|'+endObject+')'),
+          
+          split = json.split(regEx).filter(Boolean),
+          UKeys = [],
+          isKey = false,
+          isValue = false,
+          scope = '';
+      
+      /* need to look for {} in arrays */
+      
+      /* looking for: {" or ": ," }*/
+      for(var x=1,len=split.length,currKey,prevKey,futureKey;x<len;x++)
+      {
+        currKey = split[x];
+        prevKey = split[(x-1)];
+        futureKey = split[(x+1)];
+        
+        /* we have a new object */
+        if((prevKey === '":' && currKey === '{"') || (prevKey === '":' && currKey === '['))
+        {
+          layer.set(UKeys[(UKeys.length-1)],{});
+          layer = layer[UKeys[(UKeys.length-1)]]
+          UKeys.pop();
+        }
+        
+        /* we have an array index */
+        else if(prevKey === '[' || (prevKey === ',' && layer.length !== 0))
+        {
+          if(currKey === '{')
+          {
+            layer.push({});
+            layer = layer[(layer.length-1)];
+          }
+          else
+          {
+            layer.push(currKey);
+          }
+        }
+        
+        /* we have a value */
+        else if(prevKey === '":')
+        {
+          layer.set(UKeys[(UKeys.length-1)],currKey);
+          UKeys.pop();
+        }
+        
+        /* we have a key */
+        else if(prevKey === '{"' || prevKey === ',"')
+        {
+          UKeys[UKeys.length] = currKey;
+        }
+        
+        /* we go out of current object */
+        else if((prevKey === '}' || prevKey === ']') && currKey !== undefined)
+        {
+          layer = layer.__kbImmediateParent;
+        }
+      }
+      return layer;
+    }
+    
+    
     function parse(json,func)
     {
-      var obj = {},
+      var obj = Mixed({},'default'),
           split = json.split(''),
           keyCache = [],
           valCache = [],
@@ -615,6 +692,22 @@ define([],function(){
           scope = '',
           parent = obj,
           layer = obj;
+      
+      function parseValue(val)
+      {
+        var i = parseFloat(val,10),
+            b = (val === 'true');
+        if(!isNaN(i) && i.toString().length === val.length)
+        {
+          return i;
+        }
+        else if(b || val === 'false')
+        {
+          return b;
+        }
+        return val;
+      }
+      
       for(var x=0,len=split.length,currKey,lastkey,futureKey;x<len;x++)
       {
         currKey = split[x];
@@ -651,13 +744,14 @@ define([],function(){
         else if(lastKey === ':' && currKey === '{')
         {
           parent = layer;
-          layer = layer[UKeys[(UKeys.length-1)]] = {};
+          scope = scope+(scope.length !== 0 ? '.' : '')+UKeys[(UKeys.length-1)];
+          layer = layer[UKeys[(UKeys.length-1)]] = (func ? func(UKeys[(UKeys.length-1)],Mixed({},'default'),scope,layer) : Mixed({},'default'));
         }
         /* we have reached the end of a value , check for escapes '\'*/
-        else if(inValue && currKey === '"' && (futureKey === ',' || futureKey === '}'))
+        else if(inValue && currKey === '"' && lastKey !== '\\' && (futureKey === ',' || futureKey === '}'))
         {
           inValue = false;
-          layer[(UKeys.length-1)] = valCache.join('');
+          layer[UKeys[(UKeys.length-1)]] = (func ? func(UKeys[(UKeys.length-1)],parseValue(valCache.join('')),scope,layer) : parseValue(valCache.join('')));
           valCache = [];
         }
         
@@ -671,6 +765,7 @@ define([],function(){
         else if(currKey === '}')
         {
           layer = parent;
+          scope = scope.substring(0,scope.lastIndexOf('.'));
         }
       }
       return layer;
@@ -1745,6 +1840,8 @@ define([],function(){
       some:setDescriptor(Array.prototype.some),
       entries:setDescriptor(Array.prototype.entries),
       toLocaleString:setDescriptor(Array.prototype.toLocaleString),
+      
+      parseBySplit:setDescriptor(parseBySplit),
 
       /* Object Methods */
       add:setDescriptor(add),

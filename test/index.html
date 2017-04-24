@@ -15,6 +15,13 @@
       mocha.setup('bdd');
       require(['KonnektDT','chai','./test'],function(CreateKonnektDT,chai,test){
         test(CreateKonnektDT(),mocha,chai);
+        
+        /* test parsing */
+        var json = '{"todo":{"something":" cool like that {}:,[{}], ","today":500},"why":["cool",300,{}]}'
+        
+        var mixed = CreateKonnektDT();
+        
+        console.log(mixed.prototype.parseBySplit(json));
       });
     </script>
   </body>
