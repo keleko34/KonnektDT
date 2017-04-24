@@ -16,12 +16,10 @@
       require(['KonnektDT','chai','./test'],function(CreateKonnektDT,chai,test){
         test(CreateKonnektDT(),mocha,chai);
         
-        /* test parsing */
+        /* test parsing 
         var json = '{"todo":{"something":" cool like that {}:,[{}], ","today":500},"why":["cool",300,{}]}'
         
         var mixed = CreateKonnektDT();
-        
-        /* now test speed */
         
         console.profile('custom');
         
@@ -29,7 +27,7 @@
         
         for(var x=0,len=10000;x<len;x++)
         {
-          t.parse(json);
+          t.parseReplace(json);
         }
         
         console.profileEnd('custom');
@@ -44,6 +42,7 @@
         console.profileEnd('builtin');
         
         console.log(t);
+        */
       });
     </script>
   </body>
