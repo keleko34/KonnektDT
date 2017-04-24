@@ -134,6 +134,8 @@ define([],function(){
         __kbmethodupdatelisteners:setDescriptor([]),
         __kbpointers:setDescriptor({}),
         __kbevents:setDescriptor(_events),
+        __kbsetindex:setDescriptor(0,true),
+        __kbproto:setDescriptor({}),
         length:setDescriptor(0,true),
         __kbnonproxy:setDescriptor(KonnektDT,false,true),
         __kbproxy:setDescriptor(prox,false,true),
@@ -339,7 +341,7 @@ define([],function(){
     /* create check if value is just undefined but descriptor is set */
     function proxySet(target,key,value)
     {
-      if(!isObservable(target,key) && key !== 'length')
+      if(!isObservable(target,key) && key !== 'length' && key !== '__kbsetindex')
       {
         target.set(key,value);
       }
@@ -672,7 +674,7 @@ define([],function(){
         if((prevKey === '":' && currKey === '{"') || (prevKey === '":' && currKey === '['))
         {
           scope += (scope.length !== 0 ? '.' : '')+UKey;
-          layer.set(UKey,(func ? func(UKey,{},scope,layer) : {}));
+          if(!layer[UKey]) layer.set(UKey,(func ? func(UKey,{},scope,layer) : {}));
           layer = layer[UKey];
           UKeys.pop();
         }
@@ -680,15 +682,17 @@ define([],function(){
         /* we have an array index */
         else if(prevKey === '[' || (prevKey === ',' && layer.length !== 0))
         {
-          if(currKey === '{')
+          if(currKey === '{' || currKey === '{"')
           {
-            scope += (scope.length !== 0 ? '.' : '')+layer.length;
-            layer.push((func ? func(layer.length,{},scope,layer) : {}));
-            layer = layer[(layer.length-1)];
+            scope += (scope.length !== 0 ? '.' : '')+layer.__kbsetindex;
+            if(typeof layer[layer.__kbsetindex] !== 'object') layer.set(layer.__kbsetindex,(func ? func(layer.length,{},scope,layer) : {}));
+            layer.__kbsetindex += 1;
+            layer = layer[(layer.__kbsetindex-1)];
           }
           else
           {
-            layer.push((func ? func(layer.length,parseValue(currKey),scope,layer) : parseValue(currKey)));
+            layer.set(layer.__kbsetindex,(func ? func(layer.length,parseValue(currKey),scope,layer) : parseValue(currKey)));
+            layer.__kbsetindex += 1;
           }
         }
         
