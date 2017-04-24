@@ -604,7 +604,7 @@ define([],function(){
       return (this.keyCount + this.indexCount);
     }
     
-    function parse(json,func,merge)
+    function parse(json,func)
     {
       var layer = this.__kbnonproxy,
           
@@ -661,7 +661,7 @@ define([],function(){
         if((prevKey === '":' && currKey === '{"') || (prevKey === '":' && currKey === '['))
         {
           scope += (scope.length !== 0 ? '.' : '')+UKey;
-          if(!merge || (merge && layer[UKey] === undefined)) layer.set(UKey,(func ? func(UKey,{},scope,layer) : {}));
+          layer.set(UKey,(func ? func(UKey,{},scope,layer) : {}));
           layer = layer[UKey];
           UKeys.pop();
         }
@@ -672,19 +672,19 @@ define([],function(){
           if(currKey === '{')
           {
             scope += (scope.length !== 0 ? '.' : '')+layer.length;
-            if(!merge || (merge && layer[layer.length] === undefined)) layer.push((func ? func(layer.length,{},scope,layer) : {}));
+            layer.push((func ? func(layer.length,{},scope,layer) : {}));
             layer = layer[(layer.length-1)];
           }
           else
           {
-            if(!merge || (merge && layer[layer.length] === undefined)) layer.push((func ? func(layer.length,parseValue(currKey),scope,layer) : parseValue(currKey)));
+            layer.push((func ? func(layer.length,parseValue(currKey),scope,layer) : parseValue(currKey)));
           }
         }
         
         /* we have a value */
         else if(prevKey === '":')
         {
-          if(!merge || (merge && layer[layer.length] === undefined)) layer.set(UKey,(func ? func(UKey,parseValue(currKey),scope,layer) : parseValue(currKey)));
+          layer.set(UKey,(func ? func(UKey,parseValue(currKey),scope,layer) : parseValue(currKey)));
           UKeys.pop();
         }
         
@@ -707,11 +707,6 @@ define([],function(){
     function parseReplace(json,obj)
     {
       return parse.call((obj || this),json);
-    }
-    
-    function parseMerge(json,obj)
-    {
-      return parse.call((obj || this),json,undefined,true);
     }
 
     /* ENDREGION Object extensions */
@@ -1795,7 +1790,6 @@ define([],function(){
       
       parse:setDescriptor(parse),
       parseReplace:setDescriptor(parseReplace),
-      parseMerge:setDescriptor(parseMerge),
 
       /* Object Methods */
       add:setDescriptor(add),
