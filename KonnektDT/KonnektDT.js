@@ -85,7 +85,7 @@ define([],function(){
         
         ArrSort = Array.prototype.sort,
         ArrSlice = Array.prototype.slice,
-        typeChecker = ({}).toString;
+        typeChecker;
 
     if(!Object.prototype._toString) Object.prototype._toString = Object.prototype.toString;
     if(!Object._keys) Object._keys = Object.keys;
@@ -101,7 +101,9 @@ define([],function(){
         return ((!type) || ((type === 'object' || type === 'o')) ? (isNaN(parseInt(k,10))) : (type === 'all' ? true : (!isNaN(parseInt(k,10)))));
       });
     };
-
+    
+    typeChecker = ({}).toString;
+    
     /* The Main constructor */
     function Mixed(data,name,parent,scope)
     {
