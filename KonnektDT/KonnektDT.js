@@ -84,7 +84,8 @@ define([],function(){
         },
         
         ArrSort = Array.prototype.sort,
-        ArrSlice = Array.prototype.slice;
+        ArrSlice = Array.prototype.slice,
+        typeChecker = ({}).toString;
 
     if(!Object.prototype._toString) Object.prototype._toString = Object.prototype.toString;
     if(!Object._keys) Object._keys = Object.keys;
@@ -478,7 +479,7 @@ define([],function(){
     
     function type(v)
     {
-      return ({}).toString.call(v).match(/\s([a-zA-Z]+)/)[1].toLowerCase();
+      return typeChecker.call(v).replace(/(\[object\s|\])/g,'').toLowerCase();
     }
     
     function sizeof(v)
@@ -603,11 +604,12 @@ define([],function(){
       return (this.keyCount + this.indexCount);
     }
     
-    function parseBySplit(json,func)
+    function parse(json,func,merge)
     {
-      var layer = Mixed({},'default'),
+      var layer = this.__kbnonproxy,
           
           /* This makes sure the selection is not inside a "" string as a value */
+          /* 
           notInString = '(?=(?:[^"]|"[^"]*")*$)',
           startObject = '\\{'+notInString,
           endObject = '\\}'+notInString,
@@ -619,79 +621,14 @@ define([],function(){
           startValue = '\\"\\:',
           endValue = '\\"\\}',
           regEx = new RegExp('('+startKey1+'|'+startKey2+'|'+startArr+'|'+endArr+'|'+startValue+'|'+endValue+'|'+startObject+'|'+nextIndex+'|'+endObject+')'),
+          */
+          regEx = /({"|,"(?=(?:[^"]|"[^"]*")*$)|\[(?=(?:[^"]|"[^"]*")*$)|\](?=(?:[^"]|"[^"]*")*$)|":|"}|{(?=(?:[^"]|"[^"]*")*$)|,(?=(?:[^"]|"[^"]*")*$)|}(?=(?:[^"]|"[^"]*")*$))/;
           
           split = json.split(regEx).filter(Boolean),
           UKeys = [],
           isKey = false,
           isValue = false,
           scope = '';
-      
-      /* need to look for {} in arrays */
-      
-      /* looking for: {" or ": ," }*/
-      for(var x=1,len=split.length,currKey,prevKey,futureKey;x<len;x++)
-      {
-        currKey = split[x];
-        prevKey = split[(x-1)];
-        futureKey = split[(x+1)];
-        
-        /* we have a new object */
-        if((prevKey === '":' && currKey === '{"') || (prevKey === '":' && currKey === '['))
-        {
-          layer.set(UKeys[(UKeys.length-1)],{});
-          layer = layer[UKeys[(UKeys.length-1)]]
-          UKeys.pop();
-        }
-        
-        /* we have an array index */
-        else if(prevKey === '[' || (prevKey === ',' && layer.length !== 0))
-        {
-          if(currKey === '{')
-          {
-            layer.push({});
-            layer = layer[(layer.length-1)];
-          }
-          else
-          {
-            layer.push(currKey);
-          }
-        }
-        
-        /* we have a value */
-        else if(prevKey === '":')
-        {
-          layer.set(UKeys[(UKeys.length-1)],currKey);
-          UKeys.pop();
-        }
-        
-        /* we have a key */
-        else if(prevKey === '{"' || prevKey === ',"')
-        {
-          UKeys[UKeys.length] = currKey;
-        }
-        
-        /* we go out of current object */
-        else if((prevKey === '}' || prevKey === ']') && currKey !== undefined)
-        {
-          layer = layer.__kbImmediateParent;
-        }
-      }
-      return layer;
-    }
-    
-    
-    function parse(json,func)
-    {
-      var obj = Mixed({},'default'),
-          split = json.split(''),
-          keyCache = [],
-          valCache = [],
-          UKeys = [],
-          inKey = false,
-          inValue = false,
-          scope = '',
-          parent = obj,
-          layer = obj;
       
       function parseValue(val)
       {
@@ -705,84 +642,76 @@ define([],function(){
         {
           return b;
         }
+        else
+        {
+          val = val.substring(1,(val.length-1));
+        }
         return val;
       }
       
-      for(var x=0,len=split.length,currKey,lastkey,futureKey;x<len;x++)
+      /* looking for: {" or ": ," }*/
+      for(var x=1,len=split.length,currKey,prevKey,futureKey,UKey;x<len;x++)
       {
         currKey = split[x];
-        lastKey = split[(x-1)];
+        prevKey = split[(x-1)];
         futureKey = split[(x+1)];
+        UKey = UKeys[(UKeys.length-1)];
         
-        /* we have a start of a key */
-        if(!inKey && currKey === '"' && (lastKey === "," || lastKey === '{'))
+        /* we have a new object */
+        if((prevKey === '":' && currKey === '{"') || (prevKey === '":' && currKey === '['))
         {
-          inKey = true;
+          scope += (scope.length !== 0 ? '.' : '')+UKey;
+          if(!merge || (merge && layer[UKey] === undefined)) layer.set(UKey,(func ? func(UKey,{},scope,layer) : {}));
+          layer = layer[UKey];
+          UKeys.pop();
         }
         
-        /* we reached the end of a key */
-        else if(inKey && currKey === ':' && lastKey === '"')
+        /* we have an array index */
+        else if(prevKey === '[' || (prevKey === ',' && layer.length !== 0))
         {
-          inKey = false;
-          UKeys[UKeys.length] = keyCache.join('');
-          keyCache = [];
+          if(currKey === '{')
+          {
+            scope += (scope.length !== 0 ? '.' : '')+layer.length;
+            if(!merge || (merge && layer[layer.length] === undefined)) layer.push((func ? func(layer.length,{},scope,layer) : {}));
+            layer = layer[(layer.length-1)];
+          }
+          else
+          {
+            if(!merge || (merge && layer[layer.length] === undefined)) layer.push((func ? func(layer.length,parseValue(currKey),scope,layer) : parseValue(currKey)));
+          }
         }
         
-        /* we are inside a key */
-        else if(inKey)
+        /* we have a value */
+        else if(prevKey === '":')
         {
-          keyCache[keyCache.length] = currKey;
+          if(!merge || (merge && layer[layer.length] === undefined)) layer.set(UKey,(func ? func(UKey,parseValue(currKey),scope,layer) : parseValue(currKey)));
+          UKeys.pop();
         }
         
-        /* we have  reached the inside of a simple value */
-        else if(!inValue && lastKey === ':' && currKey === '"')
+        /* we have a key */
+        else if(prevKey === '{"' || (prevKey === ',' && futureKey === '":'))
         {
-          inValue = true;
+          UKeys[UKeys.length] = currKey.replace(/\"/g,'');
         }
         
-        /* we have reached an inner object, create new */
-        else if(lastKey === ':' && currKey === '{')
+        /* we go out of current object */
+        else if((prevKey === '}' || prevKey === ']') && currKey !== undefined)
         {
-          parent = layer;
-          scope = scope+(scope.length !== 0 ? '.' : '')+UKeys[(UKeys.length-1)];
-          layer = layer[UKeys[(UKeys.length-1)]] = (func ? func(UKeys[(UKeys.length-1)],Mixed({},'default'),scope,layer) : Mixed({},'default'));
-        }
-        /* we have reached the end of a value , check for escapes '\'*/
-        else if(inValue && currKey === '"' && lastKey !== '\\' && (futureKey === ',' || futureKey === '}'))
-        {
-          inValue = false;
-          layer[UKeys[(UKeys.length-1)]] = (func ? func(UKeys[(UKeys.length-1)],parseValue(valCache.join('')),scope,layer) : parseValue(valCache.join('')));
-          valCache = [];
-        }
-        
-        /* we are inside a value */
-        else if(inValue)
-        {
-          valCache[valCache.length] = currKey;
-        }
-        
-        /* we have reached the end of an inner Object and must go to parent */
-        else if(currKey === '}')
-        {
-          layer = parent;
-          scope = scope.substring(0,scope.lastIndexOf('.'));
+          scope = (scope.indexOf('.') !== -1 ? scope.substring(0,(scope.lastIndexOf('.')-1)) : '');
+          layer = layer.__kbImmediateParent;
         }
       }
-      return layer;
+      return this;
     }
     
     function parseReplace(json,obj)
     {
-      return JSON.parse(json,function(key,value){
-        
-      });
+      return parse.call((obj || this),json);
     }
     
     function parseMerge(json,obj)
     {
-      return JSON.parse(json,function(key,value){
-        
-      });
+      return parse.call((obj || this),json,undefined,true);
     }
 
     /* ENDREGION Object extensions */
@@ -981,7 +910,7 @@ define([],function(){
           {
             recMerge(_curr,to);
           }
-          else
+          else if(to[keys[x]] === undefined)
           {
             to.set(keys[x],(typeof _curr === 'object' ? {} : _curr));
           }
@@ -989,6 +918,29 @@ define([],function(){
       }
       if(key && _layer[key] === undefined) _layer.set(key,{});
       recMerge(obj,(key ? _layer[key] : _layer));
+      return this;
+    }
+    
+    function replace(obj,key)
+    {
+      var cache = [],
+          _layer = this.__kbnonproxy;
+      function recReplace(from,to)
+      {
+        var keys = (isMixed(from) ? from.keys('object') : Object.keys(from)),
+            _curr;
+        _curr = from[keys[x]];
+        if(typeof _curr === 'object' && cache.indexOf(_curr) === -1 && to[keys[x]] !== 'undefined')
+        {
+          recReplace(_curr,to);
+        }
+        else
+        {
+          to.set(keys[x],(typeof _curr === 'object' ? {} : _curr));
+        }
+      }
+      if(key && _layer[key] === undefined) _layer.set(key,{});
+      recReplace(obj,(key ? _layer[key] : _layer));
       return this;
     }
 
@@ -1841,7 +1793,9 @@ define([],function(){
       entries:setDescriptor(Array.prototype.entries),
       toLocaleString:setDescriptor(Array.prototype.toLocaleString),
       
-      parseBySplit:setDescriptor(parseBySplit),
+      parse:setDescriptor(parse),
+      parseReplace:setDescriptor(parseReplace),
+      parseMerge:setDescriptor(parseMerge),
 
       /* Object Methods */
       add:setDescriptor(add),
@@ -1854,6 +1808,7 @@ define([],function(){
       move:setDescriptor(move),
       copy:setDescriptor(copy),
       merge:setDescriptor(merge),
+      replace:setDescriptor(replace),
 
       /* Array Methods */
       copyWithin:setDescriptor(copyWithin),

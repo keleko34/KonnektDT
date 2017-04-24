@@ -21,7 +21,29 @@
         
         var mixed = CreateKonnektDT();
         
-        console.log(mixed.prototype.parseBySplit(json));
+        /* now test speed */
+        
+        console.profile('custom');
+        
+        var t = mixed({},'coolio');
+        
+        for(var x=0,len=10000;x<len;x++)
+        {
+          t.parse(json);
+        }
+        
+        console.profileEnd('custom');
+        
+        console.profile('builtin');
+        
+        for(var x=0,len=10000;x<len;x++)
+        {
+          var s = mixed(JSON.parse(json),'somethingelse');
+        }
+        
+        console.profileEnd('builtin');
+        
+        console.log(t);
       });
     </script>
   </body>
