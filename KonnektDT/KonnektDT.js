@@ -83,7 +83,9 @@ define([],function(){
           return e._preventDefault;
         },
         
-        ArrSort = Array.prototype.sort;
+        ArrSort = Array.prototype.sort,
+        ArrSlice = Array.prototype.slice,
+        typeChecker = ({}).toString;
 
     if(!Object.prototype._toString) Object.prototype._toString = Object.prototype.toString;
     if(!Object._keys) Object._keys = Object.keys;
@@ -477,7 +479,7 @@ define([],function(){
     
     function type(v)
     {
-      return ({}).toString.call(v).match(/\s([a-zA-Z]+)/)[1].toLowerCase();
+      return typeChecker.call(v).replace(/(\[object\s|\])/g,'').toLowerCase();
     }
     
     function sizeof(v)
@@ -600,6 +602,116 @@ define([],function(){
     function count()
     {
       return (this.keyCount + this.indexCount);
+    }
+    
+    function parse(json,func,merge)
+    {
+      var layer = this.__kbnonproxy,
+          
+          /* This makes sure the selection is not inside a "" string as a value */
+          /* 
+          notInString = '(?=(?:[^"]|"[^"]*")*$)',
+          startObject = '\\{'+notInString,
+          endObject = '\\}'+notInString,
+          startKey1 = '\\{\\"',
+          startKey2 = '\\,\\"'+notInString,
+          startArr = '\\['+notInString,
+          endArr = '\\]'+notInString,
+          nextIndex = '\\,'+notInString,
+          startValue = '\\"\\:',
+          endValue = '\\"\\}',
+          regEx = new RegExp('('+startKey1+'|'+startKey2+'|'+startArr+'|'+endArr+'|'+startValue+'|'+endValue+'|'+startObject+'|'+nextIndex+'|'+endObject+')'),
+          */
+          regEx = /({"|,"(?=(?:[^"]|"[^"]*")*$)|\[(?=(?:[^"]|"[^"]*")*$)|\](?=(?:[^"]|"[^"]*")*$)|":|"}|{(?=(?:[^"]|"[^"]*")*$)|,(?=(?:[^"]|"[^"]*")*$)|}(?=(?:[^"]|"[^"]*")*$))/;
+          
+          split = json.split(regEx).filter(Boolean),
+          UKeys = [],
+          isKey = false,
+          isValue = false,
+          scope = '';
+      
+      function parseValue(val)
+      {
+        var i = parseFloat(val,10),
+            b = (val === 'true');
+        if(!isNaN(i) && i.toString().length === val.length)
+        {
+          return i;
+        }
+        else if(b || val === 'false')
+        {
+          return b;
+        }
+        else
+        {
+          val = val.substring(1,(val.length-1));
+        }
+        return val;
+      }
+      
+      /* looking for: {" or ": ," }*/
+      for(var x=1,len=split.length,currKey,prevKey,futureKey,UKey;x<len;x++)
+      {
+        currKey = split[x];
+        prevKey = split[(x-1)];
+        futureKey = split[(x+1)];
+        UKey = UKeys[(UKeys.length-1)];
+        
+        /* we have a new object */
+        if((prevKey === '":' && currKey === '{"') || (prevKey === '":' && currKey === '['))
+        {
+          scope += (scope.length !== 0 ? '.' : '')+UKey;
+          if(!merge || (merge && layer[UKey] === undefined)) layer.set(UKey,(func ? func(UKey,{},scope,layer) : {}));
+          layer = layer[UKey];
+          UKeys.pop();
+        }
+        
+        /* we have an array index */
+        else if(prevKey === '[' || (prevKey === ',' && layer.length !== 0))
+        {
+          if(currKey === '{')
+          {
+            scope += (scope.length !== 0 ? '.' : '')+layer.length;
+            if(!merge || (merge && layer[layer.length] === undefined)) layer.push((func ? func(layer.length,{},scope,layer) : {}));
+            layer = layer[(layer.length-1)];
+          }
+          else
+          {
+            if(!merge || (merge && layer[layer.length] === undefined)) layer.push((func ? func(layer.length,parseValue(currKey),scope,layer) : parseValue(currKey)));
+          }
+        }
+        
+        /* we have a value */
+        else if(prevKey === '":')
+        {
+          if(!merge || (merge && layer[layer.length] === undefined)) layer.set(UKey,(func ? func(UKey,parseValue(currKey),scope,layer) : parseValue(currKey)));
+          UKeys.pop();
+        }
+        
+        /* we have a key */
+        else if(prevKey === '{"' || (prevKey === ',' && futureKey === '":'))
+        {
+          UKeys[UKeys.length] = currKey.replace(/\"/g,'');
+        }
+        
+        /* we go out of current object */
+        else if((prevKey === '}' || prevKey === ']') && currKey !== undefined)
+        {
+          scope = (scope.indexOf('.') !== -1 ? scope.substring(0,(scope.lastIndexOf('.')-1)) : '');
+          layer = layer.__kbImmediateParent;
+        }
+      }
+      return this;
+    }
+    
+    function parseReplace(json,obj)
+    {
+      return parse.call((obj || this),json);
+    }
+    
+    function parseMerge(json,obj)
+    {
+      return parse.call((obj || this),json,undefined,true);
     }
 
     /* ENDREGION Object extensions */
@@ -798,7 +910,7 @@ define([],function(){
           {
             recMerge(_curr,to);
           }
-          else
+          else if(to[keys[x]] === undefined)
           {
             to.set(keys[x],(typeof _curr === 'object' ? {} : _curr));
           }
@@ -806,6 +918,29 @@ define([],function(){
       }
       if(key && _layer[key] === undefined) _layer.set(key,{});
       recMerge(obj,(key ? _layer[key] : _layer));
+      return this;
+    }
+    
+    function replace(obj,key)
+    {
+      var cache = [],
+          _layer = this.__kbnonproxy;
+      function recReplace(from,to)
+      {
+        var keys = (isMixed(from) ? from.keys('object') : Object.keys(from)),
+            _curr;
+        _curr = from[keys[x]];
+        if(typeof _curr === 'object' && cache.indexOf(_curr) === -1 && to[keys[x]] !== 'undefined')
+        {
+          recReplace(_curr,to);
+        }
+        else
+        {
+          to.set(keys[x],(typeof _curr === 'object' ? {} : _curr));
+        }
+      }
+      if(key && _layer[key] === undefined) _layer.set(key,{});
+      recReplace(obj,(key ? _layer[key] : _layer));
       return this;
     }
 
@@ -940,7 +1075,12 @@ define([],function(){
           _layer = this.__kbnonproxy;
       if(_onevent(e) !== true)
       {
-        ArrSort.apply(_layer,arguments);
+        var _arrCopy = ArrSlice.call(_layer);
+        ArrSort.apply(_arrCopy,arguments);
+        for(var x=0,len=_arrCopy.length;x<len;x++)
+        {
+          _layer[x] = _arrCopy[x];
+        }
         e.type = 'postsort';
         e.listener = '__kbmethodupdatelisteners';
         _onevent(e);
@@ -1550,6 +1690,71 @@ define([],function(){
       }
       return this;
     }
+    
+    function callAllSubscribers()
+    {
+      var _layer = this.__kbnonproxy;
+      
+      function loop(local,subs,key)
+      {
+        for(var x=0,len=subs.length;x<len;x++)
+        {
+          subs[x].call(local,{
+            key:key,
+            value:local[key],
+            oldValue:local[key],
+            stopChange:false,
+            local:local,
+            kbref:local.__kbref,
+            initial:true
+          });
+        }
+      }
+      
+      function recCall(local)
+      {
+        var subscribers = Object.keys(local.__kbsubscribers),
+            parentSubscribers = Object.keys(local.__kbparentsubscribers);
+        
+        for(var x=0,len=subscribers.length;x<len;x++)
+        {
+          if(local.__kbsubscribers[subscribers[x]].length !== 0)
+          {
+            if(subscribers[x] === '*')
+            {
+              for(var i=0,keys=Object.keys(local),lenn=keys.length;i<lenn;i++)
+              {
+                loop(local,local.__kbsubscribers[subscribers[x]],keys[i]);
+              }
+            }
+            else
+            {
+              loop(local,local.__kbsubscribers[subscribers[x]],subscribers[x]);
+            }
+          }
+        }
+        
+        for(var x=0,len=parentSubscribers.length;x<len;x++)
+        {
+          if(local.__kbparentsubscribers[parentSubscribers[x]].length !== 0)
+          {
+            if(parentSubscribers[x] === '*')
+            {
+              for(var i=0,keys=Object.keys(local),lenn=keys.length;i<lenn;i++)
+              {
+                loop(local,local.__kbparentsubscribers[parentSubscribers[x]],keys[i]);
+              }
+            }
+            else
+            {
+              loop(local,local.__kbparentsubscribers[parentSubscribers[x]],parentSubscribers[x]);
+            }
+          }
+        }
+      }
+      recCall(_layer);
+      return this;
+    }
 
     /* ENDREGION Event Listeners */
 
@@ -1587,6 +1792,10 @@ define([],function(){
       some:setDescriptor(Array.prototype.some),
       entries:setDescriptor(Array.prototype.entries),
       toLocaleString:setDescriptor(Array.prototype.toLocaleString),
+      
+      parse:setDescriptor(parse),
+      parseReplace:setDescriptor(parseReplace),
+      parseMerge:setDescriptor(parseMerge),
 
       /* Object Methods */
       add:setDescriptor(add),
@@ -1599,6 +1808,7 @@ define([],function(){
       move:setDescriptor(move),
       copy:setDescriptor(copy),
       merge:setDescriptor(merge),
+      replace:setDescriptor(replace),
 
       /* Array Methods */
       copyWithin:setDescriptor(copyWithin),
@@ -1624,6 +1834,7 @@ define([],function(){
       subscribeDeep:setDescriptor(subscribeDeep),
       unsubscribeDeep:setDescriptor(unsubscribeDeep),
       callSubscribers:setDescriptor(callSubscribers),
+      callAllSubscribers:setDescriptor(callAllSubscribers),
       stopChange:setDescriptor(stopChange)
     });
     
