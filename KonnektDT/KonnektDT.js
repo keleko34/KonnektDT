@@ -330,7 +330,7 @@ define([],function(){
       ],
       keys = [],
       _currListener;
-      if(target[key].__kbImmediateParent)
+      if(target[key] && target[key].__kbImmediateParent)
       {
         for(var x=0,len=events.length;x<len;x++)
         {
@@ -814,7 +814,7 @@ define([],function(){
     {
       var points = Array.prototype.slice.call(arguments), 
           passobj = points.shift(),
-          prop = (passobj.get(points.join('.')) !== undefined ? points[(points.length-1)] : points.pop());
+          prop = (passobj.exists(points.join('.')) ? points[(points.length-1)] : points.pop());
       
       if(!(passobj instanceof Mixed)) passobj = new Mixed(passobj,passobj.__kbname);
       
