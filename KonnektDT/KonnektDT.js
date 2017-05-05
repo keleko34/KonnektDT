@@ -158,7 +158,14 @@ define([],function(){
         {
           var localPointer = e.local.__kbpointers[e.arguments[0]],
               localLayer = localPointer.point.getLayer(localPointer.keys);
-          if(localLayer[e.arguments[0]] !== undefined) localLayer[e.arguments[2]](e.arguments[0],e.arguments[1]);
+          if(localLayer[e.arguments[0]] !== undefined)
+          {
+            localLayer[e.arguments[2]](e.arguments[0],e.arguments[1]);
+          }
+          else if(localLayer[localPointer.keys.split('.').pop()] !== undefined)
+          {
+            localLayer[e.arguments[2]](localPointer.keys.split('.').pop(),e.arguments[1]);
+          }
         }
       })
       .addActionListener('removelistener',function(e){
@@ -166,7 +173,14 @@ define([],function(){
         {
            var localPointer = e.local.__kbpointers[e.arguments[0]],
                localLayer = localPointer.point.getLayer(localPointer.keys);
-          if(localLayer[e.arguments[0]] !== undefined) localLayer[e.arguments[2]](e.arguments[0],e.arguments[1]);
+          if(localLayer[e.arguments[0]] !== undefined)
+          {
+            localLayer[e.arguments[2]](e.arguments[0],e.arguments[1]);
+          }
+          else if(localLayer[localPointerkeys.split('.').pop()] !== undefined)
+          {
+            localLayer[e.arguments[2]](localPointer.keys.split('.').pop(),e.arguments[1]);
+          }
         }
       })
 
@@ -800,7 +814,7 @@ define([],function(){
     {
       var points = Array.prototype.slice.call(arguments), 
           passobj = points.shift(),
-          prop = points[(points.length-1)];
+          prop = (passobj.get(points.join('.')) !== undefined ? points[(points.length-1)] : points.pop());
       
       if(!(passobj instanceof Mixed)) passobj = new Mixed(passobj,passobj.__kbname);
       
@@ -810,7 +824,7 @@ define([],function(){
       
           if(_onevent(e) !== true)
           {         
-            Object.defineProperty(_layer,prop,setPointer.apply(_layer,arguments));
+            Object.defineProperty(_layer,prop,setPointer.apply(_layer,[passobj].concat(points)));
             
             _layer.__kbpointers[prop] = {keys:points.join('.'),point:passobj};
             parsePointerEvents(_layer,prop);
