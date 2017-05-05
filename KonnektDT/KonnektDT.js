@@ -786,12 +786,19 @@ define([],function(){
 
     function exists(key)
     {
-      var _layer = (key.indexOf('.') !== -1 ? this.__kbnonproxy.getLayer(key) : this.__kbnonproxy);
-      if(key.indexOf('.') !== -1) key = key.split('.').pop();
+      function recCheck(keys,layer)
+      {
+        if(keys.length !== 1)
+        {
+          return (layer[keys[0]] !== undefined ? recCheck(keys.slice(1,keys.length),layer[keys[0]]) : false);
+        }
+        else
+        {
+          return (layer[keys[0]] !== undefined);
+        }
+      }
 
-      if(!_layer) return !!_layer;
-
-      return (_layer[key] !== undefined);
+      return (recCheck(key.split('.'),this.__kbnonproxy));
     }
 
     function addPrototype(key,value)
