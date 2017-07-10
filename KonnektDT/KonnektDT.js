@@ -83,9 +83,11 @@ define([],function(){
           return e._preventDefault;
         },
         
+        /* Re-used methods: for speed increase we scope them rather than fetching props each run */
         ArrSort = Array.prototype.sort,
         ArrSlice = Array.prototype.slice,
-        typeChecker;
+        typeChecker,
+        getDesc = Object.getOwnPropertyDescriptor;
 
     if(!Object.prototype._toString) Object.prototype._toString = Object.prototype.toString;
     if(!Object._keys) Object._keys = Object.keys;
@@ -355,9 +357,14 @@ define([],function(){
     /* create check if value is just undefined but descriptor is set */
     function proxySet(target,key,value)
     {
-      if(!isObservable(target,key) && key !== 'length' && key !== '__kbsetindex')
+      var _isObservable = isObservable(target, key);
+      if(!_isObservable && key !== 'length' && key !== '__kbsetindex')
       {
         target.set(key,value);
+      }
+      else if(_isObservable && typeof value === 'object' && !isMixed(value))
+      {
+        target.set(key, value);
       }
       else
       {
@@ -562,11 +569,7 @@ define([],function(){
 
     function isObservable(obj,prop)
     {
-      prop = (typeof obj === 'string' ? obj : prop);
-      obj = (typeof obj === 'string' ? this : obj);
-      
-      var desc = Object.getOwnPropertyDescriptor(obj,prop);
-
+      var desc = getDesc(obj,prop);
       return (desc ? (desc.value === undefined) : false);
     }
 
