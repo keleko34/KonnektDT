@@ -1,3 +1,14 @@
+# !DEPRECATED
+> This package has been deprecated as a newer more enhanced version has been created.
+You can find the new version at: [GITHUB](https://github.com/keleko34/frytki) or [NPM](https://www.npmjs.com/package/frytki)
+This newer version comes with many enhancements such as:
+Faster listeners,
+More simple api interface,
+Automatic loading of script,
+Unit tests
+
+**Note: in the case of using the Konnekt Library ignore this warning a newer version of Konnekt is in the works and the new library will be included with it.
+
 # KonnektDT
 *This is a part of the Konnekt package*
 
